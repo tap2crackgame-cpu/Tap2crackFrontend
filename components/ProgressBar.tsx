@@ -63,8 +63,6 @@ function ProgressBar({ progress, othersActive = false, othersTapShare = 0 }: Pro
   }, [borderPulse, othersActive]);
 
   const getNotificationText = () => {
-    if (othersActive && clampedProgress >= 50) return "🔥 Everyone's going crazy!";
-    if (othersActive) return "👥 Others are tapping too!";
     if (clampedProgress >= 90) return "👀 Egg is almost cracking!";
     if (clampedProgress >= 70) return "🔥 Getting close!";
     if (clampedProgress >= 50) return "💪 Halfway there!";

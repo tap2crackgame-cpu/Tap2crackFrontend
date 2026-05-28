@@ -30,8 +30,6 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   const { 
     eggs, 
     selectedEggType, 
-    applyTaps, 
-    applyLocalTap, 
     showWinModal, 
     showLoseModal, 
     setShowWinModal, 
@@ -164,10 +162,12 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     eggCrackedLockRef.current = false;
   }, []);
 
-  const handleRoundStart = useCallback((data: { round: DbRound }) => {
-    if (data?.round) {
-     applyRoundToState(data.round);
-    }
+  const handleRoundStart = useCallback((data: { round?: Record<string, unknown> }) => {
+    const round = data?.round;
+    if (!round) return;
+    applyRoundToState({
+      round_number: Number(round.roundNumber ?? round.round_number ?? 0),
+    } as DbRound);
   }, [applyRoundToState]);
 
 
@@ -265,20 +265,19 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
 const handleTap = useCallback(() => {
   const egg = currentEggRef.current;
   if (!egg || !egg.isActive) return;
-
   if (!isValidTap()) return;
 
-  const multiplier = activePowerUp?.multiplier ?? 1;
-  applyLocalTap(egg.egg.type, multiplier); 
-  
+  queueTapSync(1);
+
   const remaining = egg.totalTaps - egg.currentTaps;
-  if (remaining <= (multiplier * 2)) {
-      pendingTapsRef.current += multiplier;
-      flushTapBatch(); 
-  } else {
-      queueTapSync(multiplier);
+  if (remaining <= 2) {
+    if (batchTimerRef.current) {
+      clearTimeout(batchTimerRef.current);
+      batchTimerRef.current = null;
+    }
+    flushTapBatch();
   }
-}, [activePowerUp, applyLocalTap, flushTapBatch, queueTapSync]);
+}, [flushTapBatch, queueTapSync]);
 
 
 /*=======Handle Egg Cracked=======*/
@@ -287,38 +286,33 @@ const handleEggCracked = useCallback((data: {
   antiStreakBlocked?: boolean;
   blockedTapperId?: string;
 }) => {
+  if (eggCrackedLockRef.current) return;
+  eggCrackedLockRef.current = true;
+
   if (data.antiStreakBlocked) {
     const isBlockedTapper =
       String(data.blockedTapperId) === String(authUser?.id);
     setShowWinModal(false);
-    if (isBlockedTapper) {
-      setShowLoseModal(true);
-    } else {
-      setShowLoseModal(false);
-    }
+    setShowLoseModal(isBlockedTapper);
     return;
   }
 
   const winner = normalizeWinner(data.winner as Record<string, unknown>);
+  const myId = authUser?.id;
+  const isMe =
+    !!myId &&
+    !!winner.user_id &&
+    String(winner.user_id) === String(myId);
 
-  const isMe = 
-    String(winner.user_id) === String(authUser?.id) || 
-    String(winner.id) === String(authUser?.id) ||
-    (winner.user_name === authUser?.name);
   setCurrentWinner(winner);
-  
+
   setWinners((prev) => {
-    const withoutDup = prev.filter((w) => w.id !== winner.id);
+    const withoutDup = prev.filter((w) => w.user_id !== winner.user_id);
     return [winner, ...withoutDup].slice(0, 10);
   });
 
-  if (isMe) {
-    setShowWinModal(true);
-    setShowLoseModal(false);
-  } else {
-    setShowLoseModal(true);
-    setShowWinModal(false); 
-  }
+  setShowWinModal(isMe);
+  setShowLoseModal(!isMe);
 }, [authUser, setShowWinModal, setShowLoseModal]); 
 
   /*========Socket Handlers========*/
@@ -339,19 +333,24 @@ const handleEggCracked = useCallback((data: {
   useEffect(() => {
   if (!socket) return;
 
+  const onTapRejected = () => {
+    pendingTapsRef.current = Math.max(0, pendingTapsRef.current - 1);
+  };
+
   socket.on("egg_update", handleRemoteEggUpdate);
   socket.on("egg_sync", applyRoundToState);
   socket.on("egg_cracked", handleEggCracked);
   socket.on("round_start", handleRoundStart);
-  
+  socket.on("tap_rejected", onTapRejected);
 
   return () => {
     socket.off("egg_update", handleRemoteEggUpdate);
     socket.off("egg_sync", applyRoundToState);
     socket.off("egg_cracked", handleEggCracked);
     socket.off("round_start", handleRoundStart);
+    socket.off("tap_rejected", onTapRejected);
   };
-}, [socket, handleRemoteEggUpdate, handleEggCracked, handleRoundStart, userId]);
+}, [socket, handleRemoteEggUpdate, handleEggCracked, handleRoundStart, applyRoundToState]);
   
 
   return useMemo(() => ({
