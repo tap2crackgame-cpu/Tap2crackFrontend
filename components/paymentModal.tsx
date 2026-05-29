@@ -118,8 +118,8 @@ export default function PaymentModal({
           setBusy(false);
           return;
         }
-      } catch (err) {
-        console.warn("verify poll error:", err);
+      } catch {
+        /* keep polling */
       }
       await new Promise((r) => setTimeout(r, 2000));
     }

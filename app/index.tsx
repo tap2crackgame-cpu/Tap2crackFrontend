@@ -1,11 +1,16 @@
 // Tap2Crack - Application Entry Point
-// Redirects all traffic to the welcome screen
+// Preserve ?code= from Google OAuth when redirecting to welcome
 
 import { Redirect } from "expo-router";
+import { Platform } from "react-native";
 
-/**
- * Root index component - redirects to welcome
- */
 export default function Tap2CrackIndex() {
-  return <Redirect href="/welcome" />;
+  let href = "/welcome";
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const search = window.location.search;
+    if (search.includes("code=") || search.includes("error=")) {
+      href = `/welcome${search}`;
+    }
+  }
+  return <Redirect href={href} />;
 }

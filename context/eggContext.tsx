@@ -51,7 +51,7 @@ export function EggProvider({ children }: Props) {
   // COOLDOWN HANDLER (FIXED)
   // -------------------------
   const startFrontendCooldown = useCallback((type: EggType) => {
-  const COOLDOWN_MS = 15000;
+  const COOLDOWN_MS = 10000; 
   const endTime = Date.now() + COOLDOWN_MS;
 
   setEggs((prev) => {
@@ -82,24 +82,12 @@ export function EggProvider({ children }: Props) {
 const onEggCracked = useCallback((data: any) => {
   const type = data.round?.egg_type || data.egg_type || selectedEggType;
 
-  setEggs((prev) => {
-    const egg = prev[type as EggType];
-    if (!egg) return prev;
-    return {
-      ...prev,
-      [type]: {
-        ...egg,
-        currentTaps: egg.totalTaps,
-        isActive: false,
-      },
-    };
-  });
-
   setTimeout(() => {
     setShowWinModal(false);
     setShowLoseModal(false);
+
     startFrontendCooldown(type as EggType);
-  }, 5000);
+  }, 5000); 
 
 }, [startFrontendCooldown, selectedEggType, setShowWinModal, setShowLoseModal]);
 
@@ -109,11 +97,11 @@ const onEggCracked = useCallback((data: any) => {
   //--------------------------
   const onRoundStart = (data: any) => {
   console.log("🚀 ROUND_START DATA:", data);
-  const roundData = data.round || data;
+  const roundData = data.round || data; 
   const type = (
-    roundData.egg_type ||
-    roundData.type ||
-    roundData.egg?.type ||
+    roundData.egg_type || 
+    roundData.type || 
+    roundData.egg?.type || 
     roundData.egg?.eggType
   ) as EggType;
 
@@ -121,30 +109,18 @@ const onEggCracked = useCallback((data: any) => {
     console.error("❌ Round start failed: No egg type found in this object:", roundData);
     return;
   }
-
-  setEggs((prev) => ({
+  const newEgg = normalizeEgg(roundData);
+  setEggs(prev => ({
     ...prev,
     [type]: {
-      roundId: roundData.roundId ?? prev[type]?.roundId ?? "",
-      roundNumber: roundData.roundNumber ?? roundData.round_number ?? 0,
-      totalTaps: roundData.totalTaps ?? prev[type]?.totalTaps ?? 100,
-      currentTaps: 0,
+      ...newEgg,
       isActive: true,
-      isCooldown: false,
-      cooldownEndTime: null,
-      egg: {
-        id: roundData.egg?.id ?? prev[type]?.egg?.id ?? "",
-        type,
-      },
-      prize: roundData.prize ?? prev[type]?.prize ?? {
-        type: "airtime",
-        value: 0,
-        description: "Egg Reward!",
-        currency: "NGN",
-      },
-    },
+      isCooldown: false,      
+      cooldownEndTime: null,  
+      currentTaps: 0,         
+    }
   }));
-
+  
   console.log(`✨ Successfully reset UI for ${type} egg.`);
 };
 
@@ -264,7 +240,7 @@ useEffect(() => {
   // -------------------------
   // LIVE UPDATES
   // -------------------------
-   const onEggUpdate = (data: { egg: { type: EggType; currentTaps: number; totalTaps: number; roundId?: string } & any }) => {
+   const onEggUpdate = (data: { egg: { type: EggType; currentTaps: number; totalTaps: number } & any }) => {
     const key = (data.egg.type || data.egg.egg?.type) as EggType;
     if (!key) return;
 
@@ -272,25 +248,13 @@ useEffect(() => {
       const existing = prev[key];
       if (!existing) return prev;
 
-      const incomingRoundId = data.egg.roundId;
-      const sameRound =
-        !incomingRoundId || !existing.roundId || incomingRoundId === existing.roundId;
-
-      if (sameRound && data.egg.currentTaps < existing.currentTaps) {
-        return prev;
-      }
-
-      if (existing.currentTaps === data.egg.currentTaps &&
-          (data.egg.totalTaps ?? existing.totalTaps) === existing.totalTaps) {
-        return prev;
-      }
+      if (existing.currentTaps === data.egg.currentTaps) return prev;
 
       return {
         ...prev,
         [key]: {
           ...existing,
-          roundId: incomingRoundId ?? existing.roundId,
-          currentTaps: data.egg.currentTaps,
+          currentTaps: data.egg.currentTaps, 
           totalTaps: data.egg.totalTaps ?? existing.totalTaps ?? 100,
           isActive: data.egg.isActive ?? existing.isActive,
         },

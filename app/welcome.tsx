@@ -6,14 +6,12 @@ import { Egg, Zap, Trophy, Users, Phone } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
 import BengzFooter from "@/components/BengzFooter";
 import { useGoogleAuth } from "@/hooks/googleLogin";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AUTH_API } from "@/utils/api";
 
 export default function Tap2CrackWelcome() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
 
-  const { authUser, loginAsGuest, loginWithGoogle, authReady, authStatus  } = useAuth();
+  const { authUser, loginAsGuest, authReady, authStatus } = useAuth();
   const { login, loading: googleLoading } = useGoogleAuth();
 
   const [guestLoading, setGuestLoading] = useState(false);
@@ -23,60 +21,6 @@ export default function Tap2CrackWelcome() {
   const bounce = useRef(new Animated.Value(0)).current;
   const float = useRef(new Animated.Value(0)).current;
   const animStartedRef = useRef(false);
-  const hasRun = useRef(false);
-  
-
-useEffect(() => {
-  if (Platform.OS !== "web") return;
-  if (hasRun.current) return;
-  hasRun.current = true;
-
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get("code");
-  const redirectUri = window.location.origin;
-
-  if (!code) return;
-
-  const handleGoogleLogin = async () => {
-    try {
-      const storedPhone = await AsyncStorage.getItem("temp_phone");
-
-      const res = await fetch(`${AUTH_API}/google`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          code,
-          phone: storedPhone || null,
-          redirectUri,
-        }),
-      });
-
-      if (!res.ok) {
-        console.log("Google login failed");
-        return;
-      }
-
-      const data = await res.json();
-
-      if (data.accessToken && data.refreshToken) {
-        await loginWithGoogle({
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken,
-        });
-
-        await AsyncStorage.removeItem("temp_phone");
-
-        window.history.replaceState({}, document.title, "/");
-      }
-    } catch (err) {
-      console.log("Google login error:", err);
-    }
-  };
-
-  handleGoogleLogin();
-}, []);
 
   /* ---------------- ANIMATION FIXED BLOCK ---------------- */
 

@@ -11,7 +11,8 @@ import { useDisableZoomAndSelect } from "@/hooks/useDisableZoomAndSelect";
 import { SocketProvider } from "@/hooks/SocketContext";
 import { GameProvider } from "@/context/GameContext";
 import { EggProvider } from "@/context/eggContext";
-import { useAuth } from "@/context/AuthContext"; 
+import { useAuth } from "@/context/AuthContext";
+import { useGoogleOAuthCallback } from "@/hooks/useGoogleOAuthCallback";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,14 +26,22 @@ const queryClient = new QueryClient({
 });
 
 function AppNavigation() {
-  const { authStatus, authReady  } = useAuth();
-const router = useRouter();
+  const { authStatus, authReady, loginWithGoogle } = useAuth();
+  const router = useRouter();
 
+  useGoogleOAuthCallback(loginWithGoogle);
 
-useEffect(() => {
+  useEffect(() => {
   if (!authReady) return;
 
   if (authStatus === "loading") return;
+
+  if (typeof window !== "undefined") {
+    const search = window.location.search;
+    if (search.includes("code=") || search.includes("error=")) {
+      return;
+    }
+  }
 
   if (authStatus === "unauthenticated") {
     router.replace("/welcome");

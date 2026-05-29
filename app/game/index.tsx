@@ -608,6 +608,7 @@ export default function Tap2CrackGame() {
   {progressPct > 0 && (
     <Text style={styles.progressText}>
       {Math.round(progressPct)}% cracked
+      {onlineUsers > 1 && otherPlayersTaps > 0 && ` · ${otherPlayersTaps} taps from others`}
     </Text>
   )}
 </View>
