@@ -1,23 +1,27 @@
 import { useState } from "react";
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/context/AuthContext";
 import { AUTH_API } from "@/utils/api";
+import { toast } from "@/context/ToastContext";
 
 export default function PhonePrompt() {
-  const { token, refreshProfile, loginWithGuestToken, setAuthStatus } = useAuth();
+  const { token, refreshProfile, loginWithGuestToken, setAuthStatus, setToken } = useAuth();
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const cleaned = phone.replace(/\D/g, "");
   const canContinue = cleaned.length >= 10;
 
   const onContinue = async () => {
     if (submitting) return;
     setSubmitting(true);
+    setError(null);
 
     try {
       if (token) {
-        await fetch(`${AUTH_API}/update-phone`, {
+        const res = await fetch(`${AUTH_API}/update-phone`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -25,7 +29,22 @@ export default function PhonePrompt() {
           },
           body: JSON.stringify({ phone: cleaned }),
         });
-        await refreshProfile();
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          const msg = data.error || "Could not save phone number";
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+
+        if (data.token) {
+          await AsyncStorage.setItem("token", data.token);
+          setToken(data.token);
+        }
+
+        // Force refresh — profile was fetched on Google login and would otherwise be skipped as "fresh"
+        await refreshProfile(true);
       } else {
         const res = await fetch(`${AUTH_API}/create-guest`, {
           method: "POST",
@@ -38,14 +57,21 @@ export default function PhonePrompt() {
         if (res.ok && data.token) {
           const ok = await loginWithGuestToken(data.token);
           if (!ok) {
-            console.error("Guest profile fetch failed after registration");
+            const msg = "Could not load your profile. Please try again.";
+            setError(msg);
+            toast.error(msg);
           }
         } else {
-          console.error("Guest creation failed:", data.error);
+          const msg = data.error || "Guest registration failed";
+          setError(msg);
+          toast.error(msg);
         }
       }
     } catch (err) {
       console.log("AUTH UPDATE ERROR:", err);
+      const msg = "Something went wrong. Please try again.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -70,9 +96,14 @@ export default function PhonePrompt() {
         <View style={styles.card}>
           <Text style={styles.label}>Phone number</Text>
 
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           <TextInput
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(t) => {
+              setPhone(t);
+              if (error) setError(null);
+            }}
             placeholder="+234 555 123 4567"
             placeholderTextColor="rgba(255,255,255,0.35)"
             keyboardType="phone-pad"
@@ -133,6 +164,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   label: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginBottom: 8, fontWeight: "600" as const },
+  errorText: { color: "#FF6B6B", fontSize: 13, marginBottom: 10, textAlign: "center" },
   input: {
     height: 52,
     borderRadius: 14,
