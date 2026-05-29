@@ -6,10 +6,6 @@ import { showAlertAsToast } from "@/context/ToastContext";
 
 type Tokens = { accessToken: string; refreshToken: string };
 
-/**
- * Completes Google OAuth when the user returns with ?code= in the URL.
- * Must run at app root — index.tsx Redirect used to strip the query string.
- */
 export function useGoogleOAuthCallback(
   loginWithGoogle: (tokens: Tokens) => Promise<void>
 ) {
