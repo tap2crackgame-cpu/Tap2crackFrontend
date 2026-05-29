@@ -13,6 +13,7 @@ import { GameProvider } from "@/context/GameContext";
 import { EggProvider } from "@/context/eggContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGoogleOAuthCallback } from "@/hooks/useGoogleOAuthCallback";
+import AuthLoadingScreen from "@/components/AuthLoadingScreen";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,22 +27,16 @@ const queryClient = new QueryClient({
 });
 
 function AppNavigation() {
-  const { authStatus, authReady, loginWithGoogle } = useAuth();
+  const { authStatus, authReady, loginWithGoogle, setAuthStatus } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
-  useGoogleOAuthCallback(loginWithGoogle);
+  useGoogleOAuthCallback(loginWithGoogle, setAuthStatus);
 
   useEffect(() => {
   if (!authReady) return;
 
   if (authStatus === "loading") return;
-
-  if (typeof window !== "undefined") {
-    const search = window.location.search;
-    if (search.includes("code=") || search.includes("error=")) {
-      return;
-    }
-  }
 
   if (authStatus === "unauthenticated") {
     router.replace("/welcome");
@@ -56,27 +51,55 @@ function AppNavigation() {
   if (authStatus === "ready" || authStatus === "guest") {
     router.replace("/game");
   }
-}, [authStatus, authReady]);
+}, [authStatus, authReady, router]);
 
+  const onAuthEntryRoute =
+    pathname === "/" ||
+    pathname === "" ||
+    pathname === "/welcome" ||
+    pathname.endsWith("/welcome");
+
+  const showAuthOverlay =
+    authReady &&
+    (authStatus === "loading" ||
+      (onAuthEntryRoute &&
+        (authStatus === "needs_phone" ||
+          authStatus === "ready" ||
+          authStatus === "guest")));
 
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="welcome" options={{ headerShown: false }} />
-      <Stack.Screen name="phone" options={{ headerShown: false }} />
-      <Stack.Screen name="game" options={{ headerShown: false }} />
-      <Stack.Screen name="leaderboard" options={{ title: "\u{1F3C6} Leaderboard" }} />
-      <Stack.Screen name="winners" options={{ title: "\u{1F389} Recent Winners" }} />
-      <Stack.Screen name="prizes" options={{ title: "\u{1F381} Your Prizes" }} />
-      <Stack.Screen name="profile" options={{ title: "\u{1F464} Your Profile" }} />
-      <Stack.Screen name="egglookup" options={{ title: "Egg Lookup" }} />
-      <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-      <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
-      <Stack.Screen name="terms" options={{ title: "Terms & Conditions" }} />
-      <Stack.Screen name="sponsor" options={{ title: "Be a Sponsor" }} />
-      <Stack.Screen name="buy-coffee" options={{ title: "Buy Us a Coffee" }} />
-      <Stack.Screen name="+not-found" options={{ headerShown: false }} />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerBackTitle: "Back" }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
+        <Stack.Screen name="phone" options={{ headerShown: false }} />
+        <Stack.Screen name="game" options={{ headerShown: false }} />
+        <Stack.Screen name="leaderboard" options={{ title: "\u{1F3C6} Leaderboard" }} />
+        <Stack.Screen name="winners" options={{ title: "\u{1F389} Recent Winners" }} />
+        <Stack.Screen name="prizes" options={{ title: "\u{1F381} Your Prizes" }} />
+        <Stack.Screen name="profile" options={{ title: "\u{1F464} Your Profile" }} />
+        <Stack.Screen name="egglookup" options={{ title: "Egg Lookup" }} />
+        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+        <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
+        <Stack.Screen name="terms" options={{ title: "Terms & Conditions" }} />
+        <Stack.Screen name="sponsor" options={{ title: "Be a Sponsor" }} />
+        <Stack.Screen name="buy-coffee" options={{ title: "Buy Us a Coffee" }} />
+        <Stack.Screen name="+not-found" options={{ headerShown: false }} />
+      </Stack>
+      {showAuthOverlay ? (
+        <View style={styles.authOverlay}>
+          <AuthLoadingScreen
+            message={
+              authStatus === "loading"
+                ? "Signing in with Google…"
+                : authStatus === "needs_phone"
+                  ? "Loading…"
+                  : "Opening game…"
+            }
+          />
+        </View>
+      ) : null}
+    </>
   );
 }
 
@@ -121,5 +144,10 @@ const styles = StyleSheet.create({
     ...(Platform.OS === "web"
       ? ({ userSelect: "none", cursor: "default" } as const)
       : null),
+  },
+  authOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
+    elevation: 9999,
   },
 });

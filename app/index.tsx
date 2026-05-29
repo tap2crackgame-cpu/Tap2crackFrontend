@@ -1,15 +1,19 @@
 // Tap2Crack - Application Entry Point
-// Auth-aware redirect (avoid flashing welcome when already signed in)
 
 import { Redirect } from "expo-router";
-import { Platform } from "react-native";
 import { useAuth } from "@/context/AuthContext";
+import AuthLoadingScreen from "@/components/AuthLoadingScreen";
+import { isOAuthReturnPending } from "@/utils/oauth";
 
 export default function Tap2CrackIndex() {
   const { authReady, authStatus } = useAuth();
 
-  if (!authReady || authStatus === "loading") {
-    return null;
+  if (!authReady || authStatus === "loading" || isOAuthReturnPending()) {
+    return (
+      <AuthLoadingScreen
+        message={isOAuthReturnPending() ? "Signing in with Google…" : "Loading…"}
+      />
+    );
   }
 
   if (authStatus === "ready" || authStatus === "guest") {
@@ -20,13 +24,5 @@ export default function Tap2CrackIndex() {
     return <Redirect href="/phone" />;
   }
 
-  let href = "/welcome";
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    const search = window.location.search;
-    if (search.includes("code=") || search.includes("error=")) {
-      href = `/welcome${search}`;
-    }
-  }
-
-  return <Redirect href={href} />;
+  return <Redirect href="/welcome" />;
 }

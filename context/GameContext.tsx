@@ -23,15 +23,14 @@ import { fetchWinners } from '@/services/fetchleaderboard';
 // Keep client limits close to backend limits for smoother tapping on mobile.
 const TAP_LIMIT_PER_SEC = 45;
 const MIN_TAP_INTERVAL = 18;
-const TAP_BATCH_SIZE = 12;
-const TAP_BATCH_INTERVAL = 50;
+// Smaller batches = faster server sync so all clients share the same progress %
+const TAP_BATCH_SIZE = 3;
+const TAP_BATCH_INTERVAL = 35;
 
 const [GameContextInternal, useGameInternal] = createContextHook(() => {
   const { 
     eggs, 
     selectedEggType, 
-    applyTaps, 
-    applyLocalTap, 
     showWinModal, 
     showLoseModal, 
     setShowWinModal, 
@@ -269,16 +268,19 @@ const handleTap = useCallback(() => {
   if (!isValidTap()) return;
 
   const multiplier = activePowerUp?.multiplier ?? 1;
-  applyLocalTap(egg.egg.type, multiplier); 
-  
+
   const remaining = egg.totalTaps - egg.currentTaps;
-  if (remaining <= (multiplier * 2)) {
-      pendingTapsRef.current += multiplier;
-      flushTapBatch(); 
+  if (remaining <= multiplier * TAP_BATCH_SIZE) {
+    pendingTapsRef.current += multiplier;
+    if (batchTimerRef.current) {
+      clearTimeout(batchTimerRef.current);
+      batchTimerRef.current = null;
+    }
+    flushTapBatch();
   } else {
-      queueTapSync(multiplier);
+    queueTapSync(multiplier);
   }
-}, [activePowerUp, applyLocalTap, flushTapBatch, queueTapSync]);
+}, [activePowerUp, flushTapBatch, queueTapSync]);
 
 
 /*=======Handle Egg Cracked=======*/

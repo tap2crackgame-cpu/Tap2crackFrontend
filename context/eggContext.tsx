@@ -15,8 +15,6 @@ type EggContextType = {
   onlineUsers: number;
   selectedEggType: EggType;
   joinRoom: (type: EggType) => void;
-  applyTaps: (type: EggType, taps: number) => void;
-  applyLocalTap: (type: EggType, taps: number) => void;
   showWinModal: boolean;
   showLoseModal: boolean;
   setShowWinModal: (value: boolean) => void;
@@ -152,49 +150,7 @@ useEffect(() => {
 
 
   /*========Handle Taps========*/
-  const applyLocalTap = useCallback((type: EggType, taps: number) => {
-    setEggs(prev => {
-      const current = prev[type];
-      if (!current) return prev;
-
-      return {
-        ...prev,
-        [type]: {
-          ...current,
-          currentTaps: Math.min(
-            current.currentTaps + taps,
-            current.totalTaps
-          ),
-        },
-      };
-    });
-  }, []);
-
-  
-
-   /*======HANDLE TAP RECEIVED======*/
-  const applyTaps = useCallback((type: EggType, taps: number) => {
-    setEggs(prev => {
-      const session = prev[type];
-      if (!session || !session.isActive) return prev;
-
-      const nextTaps = Math.min(
-        session.currentTaps + taps,
-        session.totalTaps
-      );
-      if (nextTaps === session.currentTaps) return prev;
-
-      return {
-        ...prev,
-        [type]: {
-          ...session,
-          currentTaps: nextTaps,
-        },
-      };
-    });
-  }, []);
-
-  
+  // Progress is server-authoritative only (egg_update). No local currentTaps mutation.
   /*======SOCKET CONNECTION======*/
   useEffect(() => {
   if (!socket) return;
@@ -240,7 +196,7 @@ useEffect(() => {
   // -------------------------
   // LIVE UPDATES
   // -------------------------
-   const onEggUpdate = (data: { egg: { type: EggType; currentTaps: number; totalTaps: number; roundId?: string } & Record<string, unknown> }) => {
+   const onEggUpdate = (data: { egg: { type: EggType; currentTaps: number; totalTaps: number; roundId?: string; isActive?: boolean } & Record<string, unknown> }) => {
     const key = (data.egg.type || data.egg.egg?.type) as EggType;
     if (!key) return;
 
@@ -251,17 +207,15 @@ useEffect(() => {
       const serverTaps = Number(data.egg.currentTaps);
       if (!Number.isFinite(serverTaps)) return prev;
 
+      const serverTotal = data.egg.totalTaps ?? existing.totalTaps ?? 100;
       const serverRoundId = data.egg.roundId as string | undefined;
-      const isNewRound =
-        Boolean(serverRoundId && existing.roundId && serverRoundId !== existing.roundId);
-
-      const nextTaps = isNewRound
-        ? serverTaps
-        : Math.max(existing.currentTaps, serverTaps);
+      const serverActive = data.egg.isActive ?? existing.isActive;
 
       if (
-        nextTaps === existing.currentTaps &&
-        (data.egg.totalTaps ?? existing.totalTaps) === existing.totalTaps
+        existing.currentTaps === serverTaps &&
+        existing.totalTaps === serverTotal &&
+        existing.roundId === serverRoundId &&
+        existing.isActive === serverActive
       ) {
         return prev;
       }
@@ -270,9 +224,9 @@ useEffect(() => {
         ...prev,
         [key]: {
           ...existing,
-          currentTaps: nextTaps,
-          totalTaps: data.egg.totalTaps ?? existing.totalTaps ?? 100,
-          isActive: data.egg.isActive ?? existing.isActive,
+          currentTaps: serverTaps,
+          totalTaps: serverTotal,
+          isActive: serverActive,
           roundId: serverRoundId ?? existing.roundId,
         },
       };
@@ -346,8 +300,6 @@ useEffect(() => {
       onlineUsers,
       selectedEggType,
       joinRoom,
-      applyTaps,
-      applyLocalTap,
       showWinModal,
       showLoseModal,
       setShowWinModal,
@@ -358,8 +310,6 @@ useEffect(() => {
       onlineUsers,
       selectedEggType,
       joinRoom,
-      applyTaps,
-      applyLocalTap,
       showWinModal,
       showLoseModal,
     ]

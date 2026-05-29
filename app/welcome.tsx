@@ -6,6 +6,8 @@ import { Egg, Zap, Trophy, Users, Phone } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
 import BengzFooter from "@/components/BengzFooter";
 import { useGoogleAuth } from "@/hooks/googleLogin";
+import AuthLoadingScreen from "@/components/AuthLoadingScreen";
+import { isOAuthReturnPending } from "@/utils/oauth";
 
 export default function Tap2CrackWelcome() {
   const insets = useSafeAreaInsets();
@@ -125,6 +127,7 @@ export default function Tap2CrackWelcome() {
   const blockingLoad = 
       !authReady || 
       authStatus === "loading" ||
+      isOAuthReturnPending() ||
       authStatus === "needs_phone" ||
       authStatus === "ready" ||
       authStatus === "guest" ||
@@ -150,26 +153,17 @@ export default function Tap2CrackWelcome() {
   /* ---------------- LOADING UI ---------------- */
   if (blockingLoad) {
     const loadingLabel = 
-    !authReady || authStatus === "loading"
+    isOAuthReturnPending() || googleLoading
+      ? "Signing in with Google…"
+      : !authReady || authStatus === "loading"
       ? "Loading…"
       : guestLoading
       ? "Starting as guest…"
-      : "Signing in…";
+      : authStatus === "needs_phone" || authStatus === "ready" || authStatus === "guest"
+      ? "Loading…"
+      : "Loading…";
 
-    return (
-      <View style={[styles.loadingRoot, { minHeight: height }]}>
-        <LinearGradient
-          colors={["#1a1a2e", "#16213e", "#0f3460"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.loadingInner}>
-          <ActivityIndicator size="large" color="#FFD700" />
-          <Text style={styles.loadingText}>{loadingLabel}</Text>
-        </View>
-      </View>
-    );
+    return <AuthLoadingScreen message={loadingLabel} />;
   }
 
   /* ---------------- FLOATING EGGS ARRAY ---------------- */

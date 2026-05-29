@@ -17,6 +17,7 @@ import {
   saveCachedProfile,
 } from "@/utils/cache";
 import { AUTH_API } from "@/utils/api";
+import { isOAuthReturnPending } from "@/utils/oauth";
 
 type AuthStatus =
   | "loading"
@@ -170,6 +171,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
  useEffect(() => {
   const bootstrap = async () => {
     try {
+      if (isOAuthReturnPending()) {
+        setAuthStatus("loading");
+        setAuthReady(true);
+        return;
+      }
+
       const storedToken = await AsyncStorage.getItem("token");
 
       if (!storedToken) {

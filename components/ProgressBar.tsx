@@ -26,8 +26,12 @@ function ProgressBar({ progress, othersActive = false, othersTapShare = 0 }: Pro
     const delta = clampedProgress - prev;
     prevRef.current = clampedProgress;
 
-    if (clampedProgress <= prev) {
-      // Ignore stale socket values — never move the bar backwards mid-round
+    if (Math.abs(delta) < 0.01) return;
+
+    // Round reset — snap to server value immediately
+    if (delta < -1) {
+      animatedProgress.setValue(clampedProgress);
+      lastAnimAtRef.current = Date.now();
       return;
     }
 

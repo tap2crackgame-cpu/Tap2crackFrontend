@@ -3,11 +3,17 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AUTH_API } from "@/utils/api";
 import { showAlertAsToast } from "@/context/ToastContext";
+import {
+  clearOAuthQueryFromUrl,
+  getOAuthReturnCode,
+  getOAuthReturnError,
+} from "@/utils/oauth";
 
 type Tokens = { accessToken: string; refreshToken: string };
 
 export function useGoogleOAuthCallback(
-  loginWithGoogle: (tokens: Tokens) => Promise<void>
+  loginWithGoogle: (tokens: Tokens) => Promise<void>,
+  setAuthStatus: (status: "loading" | "unauthenticated") => void
 ) {
   const processingRef = useRef(false);
 
@@ -15,22 +21,25 @@ export function useGoogleOAuthCallback(
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     if (processingRef.current) return;
 
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const oauthError = params.get("error");
+    const oauthError = getOAuthReturnError();
+    const code = getOAuthReturnCode();
 
     if (oauthError) {
       showAlertAsToast(
         "Google sign-in",
-        params.get("error_description") || oauthError
+        new URLSearchParams(window.location.search).get("error_description") ||
+          oauthError
       );
-      window.history.replaceState({}, document.title, window.location.pathname);
+      clearOAuthQueryFromUrl();
+      setAuthStatus("unauthenticated");
       return;
     }
 
     if (!code) return;
 
     processingRef.current = true;
+    setAuthStatus("loading");
+    clearOAuthQueryFromUrl();
 
     (async () => {
       try {
@@ -55,11 +64,13 @@ export function useGoogleOAuthCallback(
             data.hint ||
             `Google login failed (${res.status})`;
           showAlertAsToast("Google sign-in", msg);
+          setAuthStatus("unauthenticated");
           return;
         }
 
         if (!data.accessToken || !data.refreshToken) {
           showAlertAsToast("Google sign-in", "Missing tokens from server");
+          setAuthStatus("unauthenticated");
           return;
         }
 
@@ -74,10 +85,10 @@ export function useGoogleOAuthCallback(
           "Google sign-in",
           "Could not reach the server. Check your connection."
         );
+        setAuthStatus("unauthenticated");
       } finally {
-        window.history.replaceState({}, document.title, "/");
         processingRef.current = false;
       }
     })();
-  }, [loginWithGoogle]);
+  }, [loginWithGoogle, setAuthStatus]);
 }
