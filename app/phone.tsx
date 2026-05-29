@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/context/AuthContext";
 import { AUTH_API } from "@/utils/api";
 import { toast } from "@/context/ToastContext";
 
 export default function PhonePrompt() {
-  const { token, refreshProfile, loginWithGuestToken, setAuthStatus, setToken } = useAuth();
+  const { token, completePhoneSetup, loginWithGuestToken, setAuthStatus } = useAuth();
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,16 +34,22 @@ export default function PhonePrompt() {
           const msg = data.error || "Could not save phone number";
           setError(msg);
           toast.error(msg);
+          setSubmitting(false);
           return;
         }
 
-        if (data.token) {
-          await AsyncStorage.setItem("token", data.token);
-          setToken(data.token);
-        }
-
-        // Force refresh — profile was fetched on Google login and would otherwise be skipped as "fresh"
-        await refreshProfile(true);
+        await completePhoneSetup({
+          token: data.token,
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
+            avatar: data.user.avatar,
+            isGuest: data.user.isGuest,
+            phone: data.user.phone ?? cleaned,
+          },
+        });
+        return;
       } else {
         const res = await fetch(`${AUTH_API}/create-guest`, {
           method: "POST",
@@ -60,22 +65,23 @@ export default function PhonePrompt() {
             const msg = "Could not load your profile. Please try again.";
             setError(msg);
             toast.error(msg);
+            setSubmitting(false);
           }
-        } else {
-          const msg = data.error || "Guest registration failed";
-          setError(msg);
-          toast.error(msg);
+          return;
         }
+
+        const msg = data.error || "Guest registration failed";
+        setError(msg);
+        toast.error(msg);
+        setSubmitting(false);
       }
     } catch (err) {
       console.log("AUTH UPDATE ERROR:", err);
       const msg = "Something went wrong. Please try again.";
       setError(msg);
       toast.error(msg);
-    } finally {
       setSubmitting(false);
     }
-    // submit
   };
 
   const onSkip = () => {

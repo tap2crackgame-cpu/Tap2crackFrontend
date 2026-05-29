@@ -41,7 +41,18 @@ type AuthContextType = {
   loginWithGuestToken: (guestToken: string) => Promise<boolean>;
   loginAsGuest: () => void;
   logout: () => Promise<void>;
-  refreshProfile: (force?: boolean) => Promise<void>;
+  refreshProfile: (force?: boolean, tokenOverride?: string) => Promise<void>;
+  completePhoneSetup: (payload: {
+    token?: string;
+    user: {
+      id: string;
+      email?: string | null;
+      name?: string;
+      avatar?: string | null;
+      isGuest?: boolean;
+      phone?: string | null;
+    };
+  }) => Promise<void>;
   setAuthUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
 };
@@ -276,18 +287,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /* ---------------- REFRESH ---------------- */
 
-  const refreshProfile = useCallback(async (force = false) => {
-  if (!token) return;
+  const refreshProfile = useCallback(async (force = false, tokenOverride?: string) => {
+  const activeToken = tokenOverride ?? token;
+  if (!activeToken) return;
 
   const age = Date.now() - lastProfileFetchRef.current;
   if (!force && lastProfileFetchRef.current > 0 && age < PROFILE_STALE_MS) {
     return;
   }
 
-  const result = await fetchProfile(token);
+  const result = await fetchProfile(activeToken);
   
   if (result) {
-    if (result.activeToken !== token) {
+    if (result.activeToken !== activeToken) {
       setToken(result.activeToken);
       await AsyncStorage.setItem("token", result.activeToken);
     }
@@ -296,6 +308,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthStatus("unauthenticated");
   }
 }, [token, fetchProfile]);
+
+  const completePhoneSetup = useCallback(
+    async (payload: {
+      token?: string;
+      user: {
+        id: string;
+        email?: string | null;
+        name?: string;
+        avatar?: string | null;
+        isGuest?: boolean;
+        phone?: string | null;
+      };
+    }) => {
+      const nextToken = payload.token ?? token;
+      if (nextToken) {
+        await AsyncStorage.setItem("token", nextToken);
+        setToken(nextToken);
+      }
+
+      const user = mapUser({
+        id: payload.user.id,
+        email: payload.user.email,
+        name: payload.user.name,
+        avatarUrl: payload.user.avatar,
+        isGuest: payload.user.isGuest ?? false,
+        phone: payload.user.phone,
+        stats: authUser?.stats,
+        powerUps: authUser?.powerUps,
+      });
+
+      setAuthUser(user);
+      await saveCachedProfile(user);
+      lastProfileFetchRef.current = Date.now();
+      setAuthStatus(computeStatus(user, nextToken));
+
+      if (nextToken) {
+        void fetchProfile(nextToken);
+      }
+    },
+    [token, authUser, fetchProfile]
+  );
 
   /* ---------------- VALUE ---------------- */
 
@@ -310,11 +363,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginAsGuest,
       logout,
       refreshProfile,
+      completePhoneSetup,
       setAuthUser,
       setToken,
       setAuthStatus,
     }),
-    [authUser, setAuthUser, token, setToken, authStatus, authReady, setAuthStatus]
+    [authUser, setAuthUser, token, setToken, authStatus, authReady, setAuthStatus, loginWithGoogle, loginWithGuestToken, loginAsGuest, logout, refreshProfile, completePhoneSetup]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

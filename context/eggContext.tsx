@@ -240,7 +240,7 @@ useEffect(() => {
   // -------------------------
   // LIVE UPDATES
   // -------------------------
-   const onEggUpdate = (data: { egg: { type: EggType; currentTaps: number; totalTaps: number } & any }) => {
+   const onEggUpdate = (data: { egg: { type: EggType; currentTaps: number; totalTaps: number; roundId?: string } & Record<string, unknown> }) => {
     const key = (data.egg.type || data.egg.egg?.type) as EggType;
     if (!key) return;
 
@@ -248,15 +248,32 @@ useEffect(() => {
       const existing = prev[key];
       if (!existing) return prev;
 
-      if (existing.currentTaps === data.egg.currentTaps) return prev;
+      const serverTaps = Number(data.egg.currentTaps);
+      if (!Number.isFinite(serverTaps)) return prev;
+
+      const serverRoundId = data.egg.roundId as string | undefined;
+      const isNewRound =
+        Boolean(serverRoundId && existing.roundId && serverRoundId !== existing.roundId);
+
+      const nextTaps = isNewRound
+        ? serverTaps
+        : Math.max(existing.currentTaps, serverTaps);
+
+      if (
+        nextTaps === existing.currentTaps &&
+        (data.egg.totalTaps ?? existing.totalTaps) === existing.totalTaps
+      ) {
+        return prev;
+      }
 
       return {
         ...prev,
         [key]: {
           ...existing,
-          currentTaps: data.egg.currentTaps, 
+          currentTaps: nextTaps,
           totalTaps: data.egg.totalTaps ?? existing.totalTaps ?? 100,
           isActive: data.egg.isActive ?? existing.isActive,
+          roundId: serverRoundId ?? existing.roundId,
         },
       };
     });

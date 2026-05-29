@@ -125,6 +125,9 @@ export default function Tap2CrackWelcome() {
   const blockingLoad = 
       !authReady || 
       authStatus === "loading" ||
+      authStatus === "needs_phone" ||
+      authStatus === "ready" ||
+      authStatus === "guest" ||
       guestLoading || 
       googleLoading;
 

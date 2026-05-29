@@ -27,7 +27,7 @@ function ProgressBar({ progress, othersActive = false, othersTapShare = 0 }: Pro
     prevRef.current = clampedProgress;
 
     if (clampedProgress <= prev) {
-      animatedProgress.setValue(clampedProgress);
+      // Ignore stale socket values — never move the bar backwards mid-round
       return;
     }
 
