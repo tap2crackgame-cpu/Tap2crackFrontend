@@ -1,40 +1,5 @@
 import { API_BASE } from "@/utils/api";
 
-export interface CardInput {
-  number: string;
-  expiry_month: string;
-  expiry_year: string;
-  cvv: string;
-  pin?: string;
-}
-
-export interface NextActionRedirect {
-  type: "redirect_url";
-  redirect_url: { url: string };
-}
-export interface NextActionPin {
-  type: "requires_pin" | "pin";
-}
-export interface NextActionOtp {
-  type: "requires_otp" | "otp";
-  message?: string;
-}
-export type NextAction =
-  | NextActionRedirect
-  | NextActionPin
-  | NextActionOtp
-  | { type: string; [k: string]: unknown }
-  | null;
-
-export interface InitiatePaymentResponse {
-  txRef: string;
-  chargeId?: string;
-  status: string;
-  nextAction: NextAction;
-  productName?: string;
-  amount?: number;
-}
-
 export interface BankTransferDetails {
   accountNumber: string;
   bankName: string;
@@ -66,23 +31,6 @@ async function authedFetch(path: string, token: string, init: RequestInit = {}) 
   return fetch(`${API_BASE}${path}`, { ...init, headers });
 }
 
-export async function initiatePayment(
-  token: string,
-  multiplier: 2 | 3,
-  card: CardInput,
-  quantity = 1
-): Promise<InitiatePaymentResponse> {
-  const res = await authedFetch("/api/payments/initiate", token, {
-    method: "POST",
-    body: JSON.stringify({ multiplier, quantity, card }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json.error || `initiatePayment failed (${res.status})`);
-  }
-  return json;
-}
-
 export async function initiateBankTransfer(
   token: string,
   multiplier: 2 | 3,
@@ -94,23 +42,12 @@ export async function initiateBankTransfer(
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(json.error || json.details || `initiateBankTransfer failed (${res.status})`);
+    const msg =
+      json.details ||
+      json.error ||
+      `initiateBankTransfer failed (${res.status})`;
+    throw new Error(msg);
   }
-  return json;
-}
-
-export async function authorizePayment(
-  token: string,
-  chargeId: string,
-  type: "pin" | "otp",
-  value: string
-): Promise<{ status: string; nextAction: NextAction }> {
-  const res = await authedFetch("/api/payments/authorize", token, {
-    method: "POST",
-    body: JSON.stringify({ chargeId, authorization: { type, value } }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error || `authorizePayment failed (${res.status})`);
   return json;
 }
 
