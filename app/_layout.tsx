@@ -17,6 +17,18 @@ import AuthLoadingScreen from "@/components/AuthLoadingScreen";
 
 SplashScreen.preventAutoHideAsync();
 
+function isWelcomePath(pathname: string) {
+  return pathname.endsWith("/welcome");
+}
+
+function isPhonePath(pathname: string) {
+  return pathname.endsWith("/phone");
+}
+
+function isAuthEntryPath(pathname: string) {
+  return pathname === "/" || pathname.endsWith("/index") || isWelcomePath(pathname);
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -34,41 +46,38 @@ function AppNavigation() {
   useGoogleOAuthCallback(loginWithGoogle, setAuthStatus);
 
   useEffect(() => {
-  if (!authReady) return;
+    if (!authReady) return;
 
-  if (authStatus === "loading") return;
+    if (authStatus === "loading") return;
 
-  if (authStatus === "unauthenticated") {
-    if (!pathname.endsWith("/welcome")) {
-      router.replace("/welcome");
+    if (authStatus === "unauthenticated") {
+      if (!isWelcomePath(pathname)) {
+        router.replace("/welcome");
+      }
+      return;
     }
-    return;
-  }
 
-  if (authStatus === "needs_phone") {
-    if (!pathname.endsWith("/phone")) {
-      router.replace("/phone");
+    if (authStatus === "needs_phone") {
+      if (!isPhonePath(pathname)) {
+        router.replace("/phone");
+      }
+      return;
     }
-    return;
-  }
 
-  if (authStatus === "ready" || authStatus === "guest") {
-    if (!pathname.endsWith("/game")) {
-      router.replace("/game");
+    if (authStatus === "ready" || authStatus === "guest") {
+      // Only leave auth/entry screens — allow Rank, Winners, Profile, admin, etc.
+      if (isAuthEntryPath(pathname) || isPhonePath(pathname)) {
+        router.replace("/game");
+      }
     }
-  }
-}, [authStatus, authReady, router, pathname]);
-
-  const onGameOrPhone =
-    pathname.endsWith("/game") || pathname.endsWith("/phone");
+  }, [authStatus, authReady, router, pathname]);
 
   const showAuthOverlay =
     authReady &&
-    !onGameOrPhone &&
     (authStatus === "loading" ||
-      authStatus === "needs_phone" ||
-      authStatus === "ready" ||
-      authStatus === "guest");
+      (authStatus === "needs_phone" && !isPhonePath(pathname)) ||
+      ((authStatus === "ready" || authStatus === "guest") &&
+        (isAuthEntryPath(pathname) || isPhonePath(pathname))));
 
   return (
     <>
