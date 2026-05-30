@@ -246,13 +246,23 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   /*=======Handle Tap========*/
 const handleTap = useCallback(() => {
   const egg = currentEggRef.current;
-  if (!egg || !egg.isActive || egg.isCooldown) return;
+  if (!egg || egg.isCooldown) return;
+
+  if (!egg.isActive) {
+    if (egg.totalTaps > 0 && egg.currentTaps >= egg.totalTaps) {
+      syncEggRoomState();
+    }
+    return;
+  }
 
   if (!isValidTap()) return;
 
   const multiplier = activePowerUp?.multiplier ?? 1;
   const remaining = Math.max(0, egg.totalTaps - egg.currentTaps);
-  if (remaining <= 0) return;
+  if (remaining <= 0) {
+    syncEggRoomState();
+    return;
+  }
 
   const progressPct =
     egg.totalTaps > 0 ? (egg.currentTaps / egg.totalTaps) * 100 : 0;
@@ -284,7 +294,7 @@ const handleTap = useCallback(() => {
       }, TAP_BATCH_INTERVAL);
     }
   }
-}, [activePowerUp, flushTapBatch]);
+}, [activePowerUp, flushTapBatch, syncEggRoomState]);
 
 
 /*=======Handle Egg Cracked=======*/
@@ -294,17 +304,16 @@ const handleEggCracked = useCallback((data: {
   blockedTapperId?: string;
 }) => {
   if (data.antiStreakBlocked) {
+    eggCrackedLockRef.current = true;
     setShowWinModal(false);
-    const blocked = data.blockedTapperId;
-    const isBlocked =
-      !!blocked &&
-      (String(blocked) === String(authUser?.id) ||
-        String(blocked) === String(authUser?.name));
-    if (isBlocked) {
-      setShowLoseModal(true);
-    } else {
-      setShowLoseModal(false);
-    }
+    setShowLoseModal(true);
+    return;
+  }
+
+  if (!data.winner) {
+    eggCrackedLockRef.current = true;
+    setShowLoseModal(true);
+    setShowWinModal(false);
     return;
   }
 
@@ -315,6 +324,7 @@ const handleEggCracked = useCallback((data: {
     String(winner.id) === String(authUser?.id) ||
     (winner.user_name === authUser?.name);
   setCurrentWinner(winner);
+  eggCrackedLockRef.current = true;
   
   setWinners((prev) => {
     const withoutDup = prev.filter((w) => w.id !== winner.id);
@@ -373,6 +383,35 @@ const handleEggCracked = useCallback((data: {
     socket.off("tap_rejected", handleTapRejected);
   };
 }, [socket, handleRemoteEggUpdate, handleEggCracked, handleRoundStart, syncEggRoomState]);
+
+  useEffect(() => {
+    if (!currentEgg || currentEgg.totalTaps <= 0) return;
+
+    const atFullProgress = currentEgg.currentTaps >= currentEgg.totalTaps;
+    if (!atFullProgress) return;
+
+    const finishedRound = !currentEgg.isActive || currentEgg.isCooldown;
+    if (!finishedRound) {
+      syncEggRoomState();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (eggCrackedLockRef.current || showWinModal || showLoseModal) return;
+      setShowLoseModal(true);
+      syncEggRoomState();
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [
+    currentEgg?.currentTaps,
+    currentEgg?.totalTaps,
+    currentEgg?.isActive,
+    currentEgg?.isCooldown,
+    showWinModal,
+    showLoseModal,
+    syncEggRoomState,
+  ]);
   
 
   return useMemo(() => ({
