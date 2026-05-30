@@ -39,6 +39,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       },
     });
 
+    newSocket.on("connect", () => {
+      console.log("🟢 Socket connected:", newSocket.id);
+    });
+
     socketRef.current = newSocket;
     setSocket(newSocket);
 

@@ -12,41 +12,15 @@ const IS_WEB = Platform.OS === 'web';
 
 function ProgressBar({ progress, othersActive = false, othersTapShare = 0 }: ProgressBarProps) {
   // Safeguard incoming value right away to prevent NaN pollution
-  const cleanProgress = isNaN(progress) || !progress ? 0 : progress;
+  const cleanProgress = Number.isFinite(progress) ? progress : 0;
   const raw = Math.min(Math.max(cleanProgress, 0), 100);
   const clampedProgress = raw >= 99.5 ? 100 : raw;
-  
-  const prevRef = useRef(clampedProgress);
-  const lastAnimAtRef = useRef(0);
+
   const animatedProgress = useRef(new Animated.Value(clampedProgress)).current;
   const borderPulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const prev = prevRef.current;
-    const delta = clampedProgress - prev;
-    prevRef.current = clampedProgress;
-
-    if (Math.abs(delta) < 0.01) return;
-
-    // Round reset — snap to server value immediately
-    if (delta < -1) {
-      animatedProgress.setValue(clampedProgress);
-      lastAnimAtRef.current = Date.now();
-      return;
-    }
-
-    const now = Date.now();
-    if (delta < 0.4 && now - lastAnimAtRef.current < 150) {
-      animatedProgress.setValue(clampedProgress);
-      return;
-    }
-    lastAnimAtRef.current = now;
-
-    Animated.timing(animatedProgress, {
-      toValue: clampedProgress,
-      duration: delta > 5 ? 350 : 200,
-      useNativeDriver: false,
-    }).start();
+    animatedProgress.setValue(clampedProgress);
   }, [animatedProgress, clampedProgress]);
 
   useEffect(() => {

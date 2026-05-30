@@ -759,11 +759,20 @@ export default function Tap2CrackGame() {
           {winner.user_name || "Anonymous"}
         </Text>
         <Text style={styles.winnerPrize}>
-          {winner.prize_description}
-          {winner.prize_value
+          {winner.prize_type === "coupon" && winner.company_name
+            ? winner.company_name
+            : winner.prize_description}
+          {winner.prize_type !== "coupon" && winner.prize_value
             ? ` · ₦${Number(winner.prize_value).toLocaleString()}`
             : ""}
         </Text>
+        {winner.prize_type === "coupon" && (
+          <Text style={styles.winnerPrizeSub}>
+            {[winner.company_name ? winner.prize_description : null, winner.prize_code ? `Code: ${winner.prize_code}` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+        )}
       </View>
 
       <Text style={styles.winnerTime}>
@@ -1213,5 +1222,6 @@ const styles = StyleSheet.create({
   winnerDetails: { flex: 1 },
   winnerName: { fontSize: 14, fontWeight: "600", color: "#FFF" },
   winnerPrize: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
+  winnerPrizeSub: { fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 },
   winnerTime: { fontSize: 11, color: "rgba(255,255,255,0.4)" },
 });

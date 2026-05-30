@@ -93,7 +93,11 @@ export default function PrizesPage() {
               return (
               <TouchableOpacity key={w.id} style={styles.card} onPress={() => onCopy(w)}>
                 <View style={styles.cardTop}>
-                  <Text style={styles.prizeDesc}>{w.prize_description}</Text>
+                  <Text style={styles.prizeDesc}>
+                    {w.prize_type === "coupon" && w.company_name
+                      ? w.company_name
+                      : w.prize_description}
+                  </Text>
                   <View style={styles.cardTopRight}>
                     <View style={[
                       styles.settlementBadge,

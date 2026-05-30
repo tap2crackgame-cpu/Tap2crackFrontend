@@ -70,10 +70,11 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
 
     const isNoPowerUpEgg = egg?.egg?.type === 'no-powerup';
     const powerUpUsedThisRound = props.powerUpUsedThisRound;
+    const powerUpLockedThisRound = powerUpUsedThisRound || !!activePowerUp;
 
     const isDisabled =
       isPaymentLoading ||
-      powerUpUsedThisRound ||
+      powerUpLockedThisRound ||
       isNoPowerUpEgg ||
       !egg?.isActive;
 
@@ -178,7 +179,7 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
           ⚡ Power-Ups
         </Text>
 
-        {powerUpUsedThisRound && (
+        {powerUpLockedThisRound && (
           <View style={styles.usedBanner}>
             <Lock size={16} color="#FFD700" />
             <Text style={styles.usedText}>

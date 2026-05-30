@@ -139,6 +139,12 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     }
   }, [rewardGranted]);
 
+  useEffect(() => {
+    if (activePowerUp) {
+      setPowerUpUsedThisRound(true);
+    }
+  }, [activePowerUp]);
+
  
   /*========Reset Finished Round And Nomarlize New Round=======*/
   const applyRoundToState = useCallback((db: DbRound) => {

@@ -4,8 +4,10 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { Platform } from "react-native";
 import type { AllEggSessions, EggSession, EggType } from "@/types/game";
 import { useSocket } from "@/hooks/SocketContext";
 
@@ -36,10 +38,17 @@ export function EggProvider({ children }: Props) {
   const [showLoseModal, setShowLoseModal] = useState(false);
   const [selectedEggType, setSelectedEggType] =
     useState<EggType>("normal");
+  const selectedEggTypeRef = useRef<EggType>("normal");
+
+  const syncEggRoomState = useCallback(() => {
+    if (!socket) return;
+    socket.emit("join_egg_room", selectedEggTypeRef.current);
+  }, [socket]);
 
 
 
   const joinRoom = useCallback((type: EggType) => {
+  selectedEggTypeRef.current = type;
   setSelectedEggType(type);
 }, []);
 
@@ -124,11 +133,50 @@ const onEggCracked = useCallback((data: any) => {
 
 
 useEffect(() => {
+  selectedEggTypeRef.current = selectedEggType;
   if (!socket) return;
 
   console.log("🚪 Auto joining default:", selectedEggType);
   socket.emit("join_egg_room", selectedEggType);
 }, [socket, selectedEggType]);
+
+useEffect(() => {
+  if (!socket) return;
+
+  const refreshFromServer = () => {
+    syncEggRoomState();
+  };
+
+  socket.io.on("reconnect", refreshFromServer);
+
+  if (Platform.OS === "web" && typeof document !== "undefined") {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshFromServer();
+      }
+    };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        refreshFromServer();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refreshFromServer);
+    window.addEventListener("pageshow", onPageShow as EventListener);
+
+    return () => {
+      socket.io.off("reconnect", refreshFromServer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refreshFromServer);
+      window.removeEventListener("pageshow", onPageShow as EventListener);
+    };
+  }
+
+  return () => {
+    socket.io.off("reconnect", refreshFromServer);
+  };
+}, [socket, syncEggRoomState]);
 
   // -------------------------
   // NORMALIZE

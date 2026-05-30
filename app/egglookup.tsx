@@ -666,7 +666,18 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
                     </View>
                     <View style={styles.winnerDetails}>
                       <View style={styles.winnerPrize}>
-                        <Text style={styles.winnerPrizeText}>{w.prize_description}</Text>
+                        <Text style={styles.winnerPrizeText}>
+                          {w.prize_type === "coupon" && w.company_name
+                            ? w.company_name
+                            : w.prize_description}
+                        </Text>
+                        {w.prize_type === "coupon" && (
+                          <Text style={styles.winnerPrizeSubtext}>
+                            {[w.company_name ? w.prize_description : null, w.prize_code ? `Code: ${w.prize_code}` : null]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </Text>
+                        )}
                       </View>
                       <View style={[styles.eggTypeBadge, { backgroundColor: getEggColor(w.egg_type) + '30' }]}>
                         <Text style={[styles.eggTypeText, { color: getEggColor(w.egg_type) }]}>{w.egg_type}</Text>
@@ -1195,6 +1206,7 @@ const styles = StyleSheet.create({
   winnerDetails: { flexDirection: "row", alignItems: "center", gap: 8 },
   winnerPrize: { flex: 1 },
   winnerPrizeText: { fontSize: 13, color: "#FFD700", fontWeight: "600" as const },
+  winnerPrizeSubtext: { fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 },
   eggTypeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   eggTypeText: { fontSize: 10, fontWeight: "bold" as const },
   winnerValue: { fontSize: 14, fontWeight: "bold" as const, color: "#27AE60" },

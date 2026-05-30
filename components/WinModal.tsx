@@ -10,6 +10,7 @@ import {
 import html2canvas from "html2canvas";
 import { LinearGradient } from "expo-linear-gradient";
 import { Trophy, Sparkles, Camera, X } from "lucide-react";
+import { formatWinnerPrizeLabel } from "@/types/game";
 
 type WinModalProps = {
   visible: boolean;
@@ -73,6 +74,19 @@ export default function WinModal({ visible, winner, onClose }: WinModalProps) {
 
   if (!winner) return null;
 
+  const isCoupon = winner.prize_type === "coupon";
+  const prizeHeadline = isCoupon
+    ? winner.company_name || winner.prize_description
+    : winner.prize_description;
+  const prizeSubline = isCoupon
+    ? [
+        winner.company_name ? winner.prize_description : null,
+        winner.prize_code ? `Code: ${winner.prize_code}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -119,9 +133,12 @@ export default function WinModal({ visible, winner, onClose }: WinModalProps) {
 
               <View style={styles.prizeContainer}>
                 <Sparkles size={24} color="#FFD700" />
-                <Text style={styles.prizeText}>
-                  {winner.prize_description}
-                </Text>
+                <View style={styles.prizeTextWrap}>
+                  <Text style={styles.prizeText}>{prizeHeadline}</Text>
+                  {!!prizeSubline && (
+                    <Text style={styles.prizeSubtext}>{prizeSubline}</Text>
+                  )}
+                </View>
                 <Sparkles size={24} color="#FFD700" />
               </View>
 
@@ -211,10 +228,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 16,
   },
+  prizeTextWrap: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
   prizeText: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#FFFFFF",
+    textAlign: "center",
+  },
+  prizeSubtext: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.85)",
+    textAlign: "center",
   },
   eggTypeText: {
     fontSize: 14,

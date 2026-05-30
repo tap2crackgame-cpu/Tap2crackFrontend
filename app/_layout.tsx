@@ -39,33 +39,36 @@ function AppNavigation() {
   if (authStatus === "loading") return;
 
   if (authStatus === "unauthenticated") {
-    router.replace("/welcome");
+    if (!pathname.endsWith("/welcome")) {
+      router.replace("/welcome");
+    }
     return;
   }
 
   if (authStatus === "needs_phone") {
-    router.replace("/phone");
+    if (!pathname.endsWith("/phone")) {
+      router.replace("/phone");
+    }
     return;
   }
 
   if (authStatus === "ready" || authStatus === "guest") {
-    router.replace("/game");
+    if (!pathname.endsWith("/game")) {
+      router.replace("/game");
+    }
   }
-}, [authStatus, authReady, router]);
+}, [authStatus, authReady, router, pathname]);
 
-  const onAuthEntryRoute =
-    pathname === "/" ||
-    pathname === "" ||
-    pathname === "/welcome" ||
-    pathname.endsWith("/welcome");
+  const onGameOrPhone =
+    pathname.endsWith("/game") || pathname.endsWith("/phone");
 
   const showAuthOverlay =
     authReady &&
+    !onGameOrPhone &&
     (authStatus === "loading" ||
-      (onAuthEntryRoute &&
-        (authStatus === "needs_phone" ||
-          authStatus === "ready" ||
-          authStatus === "guest")));
+      authStatus === "needs_phone" ||
+      authStatus === "ready" ||
+      authStatus === "guest");
 
   return (
     <>

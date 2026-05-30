@@ -4,7 +4,7 @@ import { Trophy, Share2, Sparkles } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWinners } from "@/services/fetchleaderboard";
-import { Winner } from "@/types/game";
+import { Winner, formatWinnerPrizeLabel } from "@/types/game";
 
 const ICONS: Record<string, string> = {
   airtime: "\u{1F4F1}",
@@ -23,7 +23,7 @@ export default function Tap2CrackWinners() {
 
   const onShare = async (w: Winner) => {
     try {
-      await Share.share({ message: `${w.user_name} won ${w.prize_description} on Tap2Crack!` });
+      await Share.share({ message: `${w.user_name} won ${formatWinnerPrizeLabel(w)} on Tap2Crack!` });
     } catch (e) {
       console.error(e);
     }
@@ -103,7 +103,20 @@ export default function Tap2CrackWinners() {
                       <Text style={styles.name}>{w.user_name}</Text>
                       <View style={styles.prizeRow}>
                         <Text style={styles.prizeIcon}>{ICONS[w.prize_type] || "\u{1F381}"}</Text>
-                        <Text style={styles.prizeText}>{w.prize_description}</Text>
+                        <View style={styles.prizeTextWrap}>
+                          <Text style={styles.prizeText}>
+                            {w.prize_type === "coupon" && w.company_name
+                              ? w.company_name
+                              : w.prize_description}
+                          </Text>
+                          {w.prize_type === "coupon" && (
+                            <Text style={styles.prizeSubtext}>
+                              {[w.company_name ? w.prize_description : null, w.prize_code ? `Code: ${w.prize_code}` : null]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </Text>
+                          )}
+                        </View>
                       </View>
                       <View style={[styles.eggBadge, { backgroundColor: `${eggColor(w.egg_type)}20` }]}>
                         <Sparkles size={10} color={eggColor(w.egg_type)} />
@@ -155,8 +168,10 @@ const styles = StyleSheet.create({
   info: { flex: 1, gap: 4 },
   name: { fontSize: 15, fontWeight: "bold" as const, color: "#FFF" },
   prizeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  prizeTextWrap: { flex: 1, gap: 2 },
   prizeIcon: { fontSize: 14 },
   prizeText: { fontSize: 13, color: "#FFD700", fontWeight: "600" as const },
+  prizeSubtext: { fontSize: 11, color: "rgba(255,255,255,0.65)" },
   eggBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, alignSelf: "flex-start" },
   eggText: { fontSize: 10, fontWeight: "500" as const },
   shareBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, backgroundColor: "rgba(78,205,196,0.15)", paddingVertical: 8, borderRadius: 10 },

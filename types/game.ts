@@ -148,8 +148,33 @@ export interface Winner {
   prize_type: string;
   prize_description: string;
   prize_value?: number;
+  prize_code?: string | null;
+  company_name?: string | null;
   won_at: string;
   screenshot_url?: string | null;
+}
+
+export function formatWinnerPrizeLabel(w: {
+  prize_type?: string;
+  prize_description?: string;
+  prize_value?: number;
+  prize_code?: string | null;
+  company_name?: string | null;
+}): string {
+  if (w.prize_type === 'coupon') {
+    const parts = [
+      w.company_name,
+      w.prize_description,
+      w.prize_code ? `Code: ${w.prize_code}` : null,
+    ].filter(Boolean);
+    return parts.join(' · ') || 'Coupon';
+  }
+
+  const value =
+    w.prize_value && Number(w.prize_value) > 0
+      ? ` · ₦${Number(w.prize_value).toLocaleString()}`
+      : '';
+  return `${w.prize_description || 'Prize'}${value}`;
 }
 
 /** Normalize API/socket winner payloads to a consistent Winner shape. */
@@ -174,6 +199,8 @@ export function normalizeWinner(raw: Record<string, unknown> | null | undefined)
       w.prize_description ?? w.prizeDescription ?? "Prize"
     ),
     prize_value: Number(w.prize_value ?? w.prizeValue ?? 0),
+    prize_code: (w.prize_code as string | null) ?? (w.couponCode as string | null) ?? null,
+    company_name: (w.company_name as string | null) ?? null,
     won_at:
       wonAt instanceof Date
         ? wonAt.toISOString()

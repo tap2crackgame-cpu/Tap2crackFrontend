@@ -221,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   accessToken: string;
   refreshToken: string;
 }) => {
+  setAuthStatus("loading");
   await AsyncStorage.setItem("token", tokens.accessToken);
   await AsyncStorage.setItem("refreshToken", tokens.refreshToken);
 

@@ -7,10 +7,12 @@ import { showAlertAsToast } from "@/context/ToastContext";
 import { getRankColor, EGG_RANKS } from "@/types/game";
 import BengzFooter from "@/components/BengzFooter";
 import { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import  userUserProfile  from "@/app/useProfile";
 import { useUserPrizes } from "./usePrizes";
 import { type DbWinner, getUserSettlementLabel, isPrizeSettled } from "@/types/game";
 import { AUTH_API } from "@/utils/api";
+import { useGoogleAuth } from "@/hooks/googleLogin";
 
 const PUNS = [
   "You're egg-straordinary!",
@@ -23,6 +25,7 @@ export default function Tap2CrackProfile() {
   const router = useRouter();
   const { authUser, setAuthUser, logout, token, refreshProfile, loginWithGuestToken } = useAuth();
   const { user } = userUserProfile();
+  const { login: startGoogleSignIn, loading: googleLoading } = useGoogleAuth();
   const [loggingOut, setLoggingOut] = useState(false);
   const [crackHistoryOpen, setCrackHistoryOpen] = useState(false);
   const { crackPrizes, crackPrizesLoading, refetch: refetchCrackPrizes } = useUserPrizes();
@@ -36,7 +39,22 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
     }
   }, [crackHistoryOpen, refetchCrackPrizes]);
 
- 
+  const linkGuestWithGoogle = async () => {
+    if (!authUser?.isGuest || googleLoading) return;
+    try {
+      if (authUser.phone) {
+        await AsyncStorage.setItem("temp_phone", String(authUser.phone).replace(/\D/g, ""));
+      }
+      if (authUser.id) {
+        await AsyncStorage.setItem("temp_guest_user_id", authUser.id);
+      }
+      startGoogleSignIn();
+    } catch (err) {
+      console.log("GOOGLE LINK ERROR:", err);
+      showAlertAsToast("Google sign-in", "Could not start Google sign-in. Try again.");
+    }
+  };
+
   const doLogout = async () => {
     setLoggingOut(true);
     try{
@@ -93,9 +111,19 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
             </TouchableOpacity>
 
             {user.isGuest && (
-              <View style={styles.guestBanner}>
-                <Text style={styles.guestText}>Guest Account - Sign in with Google to save progress</Text>
-              </View>
+              <TouchableOpacity
+                style={[styles.guestBanner, googleLoading && styles.disabledBtn]}
+                onPress={linkGuestWithGoogle}
+                disabled={googleLoading}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator color="#FFD700" size="small" />
+                ) : (
+                  <Text style={styles.guestText}>
+                    Guest account — tap here to sign in with Google and save progress
+                  </Text>
+                )}
+              </TouchableOpacity>
             )}
 
             <View style={[styles.rankBadge, { borderColor: getRankColor(user?.stats?.rank) }]}>
@@ -190,7 +218,14 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
                         <View key={w.id} style={styles.prizeRow}>
                           <View style={styles.prizeRowTop}>
                             <View style={styles.prizeRowMain}>
-                              <Text style={styles.prizeDesc}>{w.prize_description}</Text>
+                              <Text style={styles.prizeDesc}>
+                                {w.prize_type === "coupon" && w.company_name
+                                  ? w.company_name
+                                  : w.prize_description}
+                              </Text>
+                              {w.prize_type === "coupon" && (
+                                <Text style={styles.prizeSubDesc}>{w.prize_description}</Text>
+                              )}
                               <Text style={styles.prizeWhen}>{new Date(w.won_at).toLocaleString()}</Text>
                             </View>
                             <View style={[
@@ -420,7 +455,17 @@ const styles = StyleSheet.create({
   },
   phoneLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
   phoneValue: { fontSize: 12, color: "#FFD700", fontWeight: "700" as const },
-  guestBanner: { backgroundColor: "rgba(255,215,0,0.15)", paddingVertical: 8, paddingHorizontal: 16, borderRadius: 12, marginBottom: 12 },
+  guestBanner: {
+    backgroundColor: "rgba(255,215,0,0.15)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.35)",
+    width: "100%",
+    alignItems: "center",
+  },
   guestText: { color: "#FFD700", fontSize: 12, textAlign: "center" },
   rankBadge: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.1)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginBottom: 10 },
   rankText: { fontSize: 13, fontWeight: "bold" as const },
@@ -516,6 +561,7 @@ const styles = StyleSheet.create({
   prizeRowTop: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 },
   prizeRowMain: { flex: 1 },
   prizeDesc: { fontSize: 15, fontWeight: "700" as const, color: "#FFF", marginBottom: 4 },
+  prizeSubDesc: { fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 4 },
   prizeWhen: { fontSize: 11, color: "rgba(255,255,255,0.45)" },
   settlementBadge: {
     paddingHorizontal: 10,

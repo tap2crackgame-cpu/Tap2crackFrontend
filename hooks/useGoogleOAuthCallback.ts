@@ -45,6 +45,7 @@ export function useGoogleOAuthCallback(
       try {
         const redirectUri = window.location.origin;
         const storedPhone = await AsyncStorage.getItem("temp_phone");
+        const guestUserId = await AsyncStorage.getItem("temp_guest_user_id");
 
         const res = await fetch(`${AUTH_API}/google`, {
           method: "POST",
@@ -52,6 +53,7 @@ export function useGoogleOAuthCallback(
           body: JSON.stringify({
             code,
             phone: storedPhone || null,
+            guestUserId: guestUserId || null,
             redirectUri,
           }),
         });
@@ -78,7 +80,7 @@ export function useGoogleOAuthCallback(
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
         });
-        await AsyncStorage.removeItem("temp_phone");
+        await AsyncStorage.multiRemove(["temp_phone", "temp_guest_user_id"]);
       } catch (err) {
         console.error("Google login error:", err);
         showAlertAsToast(
