@@ -17,6 +17,7 @@ type EggContextType = {
   onlineUsers: number;
   selectedEggType: EggType;
   joinRoom: (type: EggType) => void;
+  syncEggRoomState: () => void;
   showWinModal: boolean;
   showLoseModal: boolean;
   setShowWinModal: (value: boolean) => void;
@@ -86,8 +87,27 @@ export function EggProvider({ children }: Props) {
 //---------------------------
 // EGG CRACKED 
 //---------------------------
-const onEggCracked = useCallback((data: any) => {
+  const onEggCracked = useCallback((data: any) => {
   const type = data.round?.egg_type || data.egg_type || selectedEggType;
+  const roundData = data.round || data;
+  const key = (roundData?.egg?.type || roundData?.egg_type || type) as EggType;
+
+  if (key && roundData) {
+    setEggs((prev) => {
+      const existing = prev[key];
+      if (!existing) return prev;
+      const total = Number(roundData.totalTaps ?? existing.totalTaps ?? 0);
+      return {
+        ...prev,
+        [key]: {
+          ...existing,
+          currentTaps: total,
+          totalTaps: total || existing.totalTaps,
+          isActive: false,
+        },
+      };
+    });
+  }
 
   setTimeout(() => {
     setShowWinModal(false);
@@ -177,6 +197,26 @@ useEffect(() => {
     socket.io.off("reconnect", refreshFromServer);
   };
 }, [socket, syncEggRoomState]);
+
+  const onCooldownStarted = useCallback((data: { endsAt?: string | number | null }) => {
+    const type = selectedEggTypeRef.current;
+    const endsAt = data?.endsAt ? new Date(data.endsAt).getTime() : Date.now() + 10000;
+
+    setEggs((prev) => {
+      const egg = prev[type];
+      if (!egg) return prev;
+      return {
+        ...prev,
+        [type]: {
+          ...egg,
+          isActive: false,
+          isCooldown: true,
+          cooldownEndTime: endsAt,
+          currentTaps: egg.totalTaps,
+        },
+      };
+    });
+  }, []);
 
   // -------------------------
   // NORMALIZE
@@ -297,6 +337,7 @@ useEffect(() => {
    socket.on("presence_update", onPresence);
    socket.on("egg_cracked", onEggCracked);
    socket.on("round_start", onRoundStart);
+   socket.on("cooldown_started", onCooldownStarted);
 
 
   return () => {
@@ -306,8 +347,9 @@ useEffect(() => {
     socket.off("presence_update", onPresence);
     socket.off("egg_cracked", onEggCracked);
     socket.off("round_start", onRoundStart);
+    socket.off("cooldown_started", onCooldownStarted);
   };
-}, [socket, normalizeEgg, onEggCracked, onRoundStart]);
+}, [socket, normalizeEgg, onEggCracked, onRoundStart, onCooldownStarted]);
 
 
   // -------------------------
@@ -328,9 +370,9 @@ useEffect(() => {
             ...egg,
             isCooldown: false,
             cooldownEndTime: null,
-            isActive: false,
           };
           needsUpdate = true;
+          syncEggRoomState();
         }
       });
 
@@ -339,7 +381,7 @@ useEffect(() => {
   }, 2000);
 
   return () => clearInterval(interval);
-}, []);
+}, [syncEggRoomState]);
 
 
   const contextValue = useMemo(
@@ -348,6 +390,7 @@ useEffect(() => {
       onlineUsers,
       selectedEggType,
       joinRoom,
+      syncEggRoomState,
       showWinModal,
       showLoseModal,
       setShowWinModal,
@@ -358,6 +401,7 @@ useEffect(() => {
       onlineUsers,
       selectedEggType,
       joinRoom,
+      syncEggRoomState,
       showWinModal,
       showLoseModal,
     ]

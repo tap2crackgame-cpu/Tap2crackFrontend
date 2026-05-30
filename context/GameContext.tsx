@@ -34,7 +34,8 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     showWinModal, 
     showLoseModal, 
     setShowWinModal, 
-    setShowLoseModal 
+    setShowLoseModal,
+    syncEggRoomState,
   } = useEgg();
   const { authUser} = useAuth();
   const  socket  = useSocket();
@@ -214,30 +215,6 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
 
 
   /*=======Batch Tap Engine=======*/
-  const queueTapSync = useCallback((tapValue: number) => {
-    pendingTapsRef.current += tapValue;
-
-     if (pendingTapsRef.current >= TAP_BATCH_SIZE) {
-       if (batchTimerRef.current) {
-         clearTimeout(batchTimerRef.current);
-         batchTimerRef.current = null;
-       }
-      flushTapBatch();
-      return;
-     }
-
-     if (!batchTimerRef.current) {
-       batchTimerRef.current = setTimeout(() => {
-         batchTimerRef.current = null;
-         flushTapBatch();
-       }, TAP_BATCH_INTERVAL);
-     }
-  }, []);
-
-  /*=======Flush Tap Batch=======*/
-
-  /*=======Flush Tap Batch=======*/
-
   const flushTapBatch = useCallback(() => {
     // FIX 1: Grab the taps and clear the reference counter IMMEDIATELY.
     // This blocks rapid, simultaneous clicks from double-flushing stale numbers.
@@ -269,24 +246,45 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   /*=======Handle Tap========*/
 const handleTap = useCallback(() => {
   const egg = currentEggRef.current;
-  if (!egg || !egg.isActive) return;
+  if (!egg || !egg.isActive || egg.isCooldown) return;
 
   if (!isValidTap()) return;
 
   const multiplier = activePowerUp?.multiplier ?? 1;
+  const remaining = Math.max(0, egg.totalTaps - egg.currentTaps);
+  if (remaining <= 0) return;
 
-  const remaining = egg.totalTaps - egg.currentTaps;
-  if (remaining <= multiplier * TAP_BATCH_SIZE) {
-    pendingTapsRef.current += multiplier;
+  const progressPct =
+    egg.totalTaps > 0 ? (egg.currentTaps / egg.totalTaps) * 100 : 0;
+  const nearEnd =
+    progressPct >= 90 || remaining <= multiplier * TAP_BATCH_SIZE;
+
+  pendingTapsRef.current += multiplier;
+
+  if (nearEnd) {
     if (batchTimerRef.current) {
       clearTimeout(batchTimerRef.current);
       batchTimerRef.current = null;
     }
     flushTapBatch();
   } else {
-    queueTapSync(multiplier);
+    if (pendingTapsRef.current >= TAP_BATCH_SIZE) {
+      if (batchTimerRef.current) {
+        clearTimeout(batchTimerRef.current);
+        batchTimerRef.current = null;
+      }
+      flushTapBatch();
+      return;
+    }
+
+    if (!batchTimerRef.current) {
+      batchTimerRef.current = setTimeout(() => {
+        batchTimerRef.current = null;
+        flushTapBatch();
+      }, TAP_BATCH_INTERVAL);
+    }
   }
-}, [activePowerUp, flushTapBatch, queueTapSync]);
+}, [activePowerUp, flushTapBatch]);
 
 
 /*=======Handle Egg Cracked=======*/
@@ -347,19 +345,31 @@ const handleEggCracked = useCallback((data: {
   useEffect(() => {
   if (!socket) return;
 
+  const handleTapRejected = (data: { reason?: string }) => {
+    if (data?.reason === "STALE_ROUND") {
+      pendingTapsRef.current = 0;
+      if (batchTimerRef.current) {
+        clearTimeout(batchTimerRef.current);
+        batchTimerRef.current = null;
+      }
+      syncEggRoomState();
+    }
+  };
+
   socket.on("egg_update", handleRemoteEggUpdate);
   socket.on("egg_sync", applyRoundToState);
   socket.on("egg_cracked", handleEggCracked);
   socket.on("round_start", handleRoundStart);
-  
+  socket.on("tap_rejected", handleTapRejected);
 
   return () => {
     socket.off("egg_update", handleRemoteEggUpdate);
     socket.off("egg_sync", applyRoundToState);
     socket.off("egg_cracked", handleEggCracked);
     socket.off("round_start", handleRoundStart);
+    socket.off("tap_rejected", handleTapRejected);
   };
-}, [socket, handleRemoteEggUpdate, handleEggCracked, handleRoundStart, userId]);
+}, [socket, handleRemoteEggUpdate, handleEggCracked, handleRoundStart, syncEggRoomState]);
   
 
   return useMemo(() => ({

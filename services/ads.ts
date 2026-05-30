@@ -6,6 +6,8 @@ export interface PromoAd {
   id: string;
   title: string;
   description: string;
+  companyName: string;
+  companyLogoUrl: string;
   mediaUrl: string;
   mediaType: PromoAdMediaType;
   isActive: boolean;
@@ -31,6 +33,45 @@ async function adminFetch(
   return json;
 }
 
+async function adminUpload(
+  token: string,
+  path: string,
+  file: Blob,
+  filename: string
+) {
+  const form = new FormData();
+  form.append("file", file, filename);
+  const res = await fetch(`${AUTH_API}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `Upload failed (${res.status})`);
+  return json;
+}
+
+export async function uploadAdminAdMedia(
+  token: string,
+  file: Blob,
+  filename: string
+): Promise<{ url: string; mediaType: PromoAdMediaType }> {
+  const json = await adminUpload(token, "/admin/ads/upload/media", file, filename);
+  return {
+    url: json.url,
+    mediaType: (json.mediaType as PromoAdMediaType) || "image",
+  };
+}
+
+export async function uploadAdminAdLogo(
+  token: string,
+  file: Blob,
+  filename: string
+): Promise<{ url: string }> {
+  const json = await adminUpload(token, "/admin/ads/upload/logo", file, filename);
+  return { url: json.url };
+}
+
 export async function fetchAdminAds(token: string): Promise<PromoAd[]> {
   const json = await adminFetch(token, "/admin/ads");
   return json.ads ?? [];
@@ -41,6 +82,8 @@ export async function createAdminAd(
   data: {
     title: string;
     description?: string;
+    companyName: string;
+    companyLogoUrl?: string;
     mediaUrl: string;
     mediaType: PromoAdMediaType;
     isActive?: boolean;
@@ -63,6 +106,8 @@ export async function updateAdminAd(
   data: Partial<{
     title: string;
     description: string;
+    companyName: string;
+    companyLogoUrl: string;
     mediaUrl: string;
     mediaType: PromoAdMediaType;
     isActive: boolean;

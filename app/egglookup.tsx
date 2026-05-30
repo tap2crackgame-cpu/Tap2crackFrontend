@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, TextInput } from "react-native";
+import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, TextInput, Platform, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Shield, Check, Users, Trophy, Zap, DollarSign, Clock, Crown, Ban, Gift, Video, Search } from "lucide-react-native";
 import {
@@ -7,6 +7,8 @@ import {
   createAdminAd,
   updateAdminAd,
   deleteAdminAd,
+  uploadAdminAdMedia,
+  uploadAdminAdLogo,
   type PromoAd,
   type PromoAdMediaType,
 } from "@/services/ads";
@@ -38,10 +40,14 @@ export default function AdminDashboard() {
   const [creatingCode, setCreatingCode] = useState(false);
   const [adTitle, setAdTitle] = useState('');
   const [adDescription, setAdDescription] = useState('');
+  const [adCompanyName, setAdCompanyName] = useState('');
+  const [adCompanyLogoUrl, setAdCompanyLogoUrl] = useState('');
   const [adMediaUrl, setAdMediaUrl] = useState('');
   const [adMediaType, setAdMediaType] = useState<PromoAdMediaType>('image');
   const [adSortOrder, setAdSortOrder] = useState('0');
   const [creatingAd, setCreatingAd] = useState(false);
+  const [uploadingAdMedia, setUploadingAdMedia] = useState(false);
+  const [uploadingAdLogo, setUploadingAdLogo] = useState(false);
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [refreshing, setRefreshing] = useState(false);
@@ -349,15 +355,66 @@ const { data: promoAds = [], isLoading: adsLoading } = useQuery<PromoAd[]>({
 const resetAdForm = useCallback(() => {
   setAdTitle('');
   setAdDescription('');
+  setAdCompanyName('');
+  setAdCompanyLogoUrl('');
   setAdMediaUrl('');
   setAdMediaType('image');
   setAdSortOrder('0');
 }, []);
 
+const pickWebFile = useCallback((accept: string, onFile: (file: File) => void) => {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') {
+    showAlertAsToast('Upload', 'File upload works on web admin. You can paste a direct URL instead.');
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = accept;
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (file) onFile(file);
+  };
+  input.click();
+}, []);
+
+const handleUploadAdMedia = useCallback(() => {
+  if (!token) return;
+  const accept = adMediaType === 'video' ? 'video/mp4,video/webm,video/quicktime' : 'image/*';
+  pickWebFile(accept, async (file) => {
+    setUploadingAdMedia(true);
+    try {
+      const result = await uploadAdminAdMedia(token, file, file.name);
+      setAdMediaUrl(result.url);
+      setAdMediaType(result.mediaType);
+      showAlertAsToast('Uploaded', 'Ad media saved on server.');
+    } catch (err: any) {
+      showAlertAsToast('Upload failed', err?.message || 'Could not upload media');
+    } finally {
+      setUploadingAdMedia(false);
+    }
+  });
+}, [token, adMediaType, pickWebFile]);
+
+const handleUploadAdLogo = useCallback(() => {
+  if (!token) return;
+  pickWebFile('image/*', async (file) => {
+    setUploadingAdLogo(true);
+    try {
+      const result = await uploadAdminAdLogo(token, file, file.name);
+      setAdCompanyLogoUrl(result.url);
+      showAlertAsToast('Uploaded', 'Company logo saved on server.');
+    } catch (err: any) {
+      showAlertAsToast('Upload failed', err?.message || 'Could not upload logo');
+    } finally {
+      setUploadingAdLogo(false);
+    }
+  });
+}, [token, pickWebFile]);
+
 const handleCreateAd = useCallback(async () => {
   if (!token) return;
-  if (!adTitle.trim() || !adMediaUrl.trim()) {
-    showAlertAsToast('Missing fields', 'Title and media URL are required.');
+  if (!adTitle.trim() || !adMediaUrl.trim() || !adCompanyName.trim()) {
+    showAlertAsToast('Missing fields', 'Title, company name, and media are required.');
     return;
   }
 
@@ -366,6 +423,8 @@ const handleCreateAd = useCallback(async () => {
     await createAdminAd(token, {
       title: adTitle.trim(),
       description: adDescription.trim(),
+      companyName: adCompanyName.trim(),
+      companyLogoUrl: adCompanyLogoUrl.trim() || undefined,
       mediaUrl: adMediaUrl.trim(),
       mediaType: adMediaType,
       isActive: true,
@@ -373,13 +432,13 @@ const handleCreateAd = useCallback(async () => {
     });
     resetAdForm();
     queryClient.invalidateQueries({ queryKey: ['admin-ads'] });
-    showAlertAsToast('Success', 'Promo ad saved. Users can watch it for free 2x tap.');
+    showAlertAsToast('Success', 'Promo ad saved. Users will see your company branding in the ad modal.');
   } catch (err: any) {
     showAlertAsToast('Error', err?.message || 'Failed to create ad');
   } finally {
     setCreatingAd(false);
   }
-}, [token, adTitle, adDescription, adMediaUrl, adMediaType, adSortOrder, resetAdForm, queryClient]);
+}, [token, adTitle, adDescription, adCompanyName, adCompanyLogoUrl, adMediaUrl, adMediaType, adSortOrder, resetAdForm, queryClient]);
 
 const handleToggleAdActive = useCallback(async (ad: PromoAd) => {
   if (!token) return;
@@ -821,7 +880,7 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
               <View style={styles.prizeForm} key="admin-ads-form">
                 <Text style={styles.formTitle}>Promo Ads ( Watch Ads for free 2x tap)</Text>
                 <Text style={styles.adHint}>
-                  Add ads using direct image/video links only.
+                  Upload ad media and company logo to the server, or paste direct links. Logo files are removed when the ad is deleted.
                 </Text>
 
                 <View style={styles.typeRow}>
@@ -862,6 +921,51 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
                 </View>
 
                 <View style={styles.inputRow}>
+                  <Text style={styles.inputLabel}>Company name</Text>
+                  <TextInput
+                    value={adCompanyName}
+                    onChangeText={setAdCompanyName}
+                    placeholder="e.g. Korra Shoes"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    style={styles.input}
+                    blurOnSubmit={false}
+                    autoCorrect={false}
+                    spellCheck={false}
+                  />
+                </View>
+
+                <View style={styles.inputRow}>
+                  <Text style={styles.inputLabel}>Company logo</Text>
+                  <View style={styles.uploadRow}>
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, uploadingAdLogo && styles.disabledBtn]}
+                      onPress={handleUploadAdLogo}
+                      disabled={uploadingAdLogo}
+                    >
+                      {uploadingAdLogo ? (
+                        <ActivityIndicator color="#1a1a2e" size="small" />
+                      ) : (
+                        <Text style={styles.uploadBtnText}>Upload logo image</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    value={adCompanyLogoUrl}
+                    onChangeText={setAdCompanyLogoUrl}
+                    placeholder="Logo URL (filled after upload)"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    style={styles.input}
+                    autoCapitalize="none"
+                    blurOnSubmit={false}
+                    autoCorrect={false}
+                    spellCheck={false}
+                  />
+                  {!!adCompanyLogoUrl && (
+                    <Image source={{ uri: adCompanyLogoUrl }} style={styles.logoPreview} resizeMode="contain" />
+                  )}
+                </View>
+
+                <View style={styles.inputRow}>
                   <Text style={styles.inputLabel}>Description (optional)</Text>
                   <TextInput
                     value={adDescription}
@@ -876,11 +980,24 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
                 </View>
 
                 <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Media URL</Text>
+                  <Text style={styles.inputLabel}>Ad media</Text>
+                  <View style={styles.uploadRow}>
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, uploadingAdMedia && styles.disabledBtn]}
+                      onPress={handleUploadAdMedia}
+                      disabled={uploadingAdMedia}
+                    >
+                      {uploadingAdMedia ? (
+                        <ActivityIndicator color="#1a1a2e" size="small" />
+                      ) : (
+                        <Text style={styles.uploadBtnText}>Upload {adMediaType}</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                   <TextInput
                     value={adMediaUrl}
                     onChangeText={setAdMediaUrl}
-                    placeholder="https://… image or mp4 link"
+                    placeholder="Media URL (filled after upload or paste link)"
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     style={styles.input}
                     autoCapitalize="none"
@@ -935,6 +1052,9 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
                     <View style={styles.adCardHeader}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.adTitle}>{ad.title}</Text>
+                        {!!ad.companyName && (
+                          <Text style={styles.adCompanyName}>Sponsor: {ad.companyName}</Text>
+                        )}
                         {!!ad.description && (
                           <Text style={styles.adDescription} numberOfLines={2}>
                             {ad.description}
@@ -1232,6 +1352,24 @@ const styles = StyleSheet.create({
   createBtn: { marginTop: 6, backgroundColor: "#FFD700", paddingVertical: 12, borderRadius: 12, alignItems: "center" },
   createBtnText: { color: "#1a1a2e", fontWeight: "900" as const },
   adHint: { color: "rgba(255,255,255,0.55)", fontSize: 12, marginBottom: 12, lineHeight: 18 },
+  uploadRow: { flexDirection: "row", marginBottom: 8 },
+  uploadBtn: {
+    backgroundColor: "#4ECDC4",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 160,
+  },
+  uploadBtnText: { color: "#1a1a2e", fontWeight: "700" as const, fontSize: 13 },
+  logoPreview: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    marginTop: 8,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
   adCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 14,
@@ -1242,6 +1380,7 @@ const styles = StyleSheet.create({
   },
   adCardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 },
   adTitle: { color: "#FFF", fontSize: 15, fontWeight: "700" as const },
+  adCompanyName: { color: "#4ECDC4", fontSize: 12, fontWeight: "600" as const, marginTop: 2 },
   adDescription: { color: "rgba(255,255,255,0.55)", fontSize: 12, marginTop: 4 },
   adMeta: { color: "rgba(255,255,255,0.4)", fontSize: 10, marginTop: 6, fontWeight: "600" as const },
   adUrl: { color: "rgba(78,205,196,0.85)", fontSize: 10, marginBottom: 10, fontFamily: "monospace" },

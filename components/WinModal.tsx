@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   Animated,
   StyleSheet,
+  Platform,
 } from "react-native";
 import html2canvas from "html2canvas";
 import { LinearGradient } from "expo-linear-gradient";
 import { Trophy, Sparkles, Camera, X } from "lucide-react";
-import { formatWinnerPrizeLabel } from "@/types/game";
 
 type WinModalProps = {
   visible: boolean;
@@ -18,10 +18,40 @@ type WinModalProps = {
   onClose: () => void;
 };
 
+function PrizeContent({ winner }: { winner: any }) {
+  const isCoupon = winner.prize_type === "coupon";
+
+  if (isCoupon) {
+    return (
+      <View style={styles.prizeTextWrap}>
+        {!!winner.company_name && (
+          <Text style={styles.prizeText}>{winner.company_name}</Text>
+        )}
+        {!!winner.prize_description && (
+          <Text style={styles.prizeSubtext}>{winner.prize_description}</Text>
+        )}
+        {!!winner.prize_code && (
+          <Text style={styles.prizeCode}>Code: {winner.prize_code}</Text>
+        )}
+        {!winner.company_name &&
+          !winner.prize_description &&
+          !winner.prize_code && (
+            <Text style={styles.prizeText}>Coupon prize</Text>
+          )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.prizeTextWrap}>
+      <Text style={styles.prizeText}>{winner.prize_description}</Text>
+    </View>
+  );
+}
+
 export default function WinModal({ visible, winner, onClose }: WinModalProps) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
-
   const captureRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -46,16 +76,14 @@ export default function WinModal({ visible, winner, onClose }: WinModalProps) {
     } else {
       scaleAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, scaleAnim, rotateAnim]);
 
   const handleScreenshot = async () => {
-    if (!captureRef.current) return;
+    if (Platform.OS !== "web" || !captureRef.current) return;
 
     try {
       const canvas = await html2canvas(captureRef.current);
-
       const image = canvas.toDataURL("image/png");
-
       const link = document.createElement("a");
       link.href = image;
       link.download = "tap2crack-win.png";
@@ -74,106 +102,82 @@ export default function WinModal({ visible, winner, onClose }: WinModalProps) {
 
   if (!winner) return null;
 
-  const isCoupon = winner.prize_type === "coupon";
-  const prizeHeadline = isCoupon
-    ? winner.company_name || winner.prize_description
-    : winner.prize_description;
-  const prizeSubline = isCoupon
-    ? [
-        winner.company_name ? winner.prize_description : null,
-        winner.prize_code ? `Code: ${winner.prize_code}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : null;
+  const modalBody = (
+    <LinearGradient colors={["#FFD700", "#FFA500"]} style={styles.gradient}>
+      <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <X size={24} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      <Animated.View
+        style={{
+          transform: [
+            {
+              rotate: rotateAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ["0deg", "360deg"],
+              }),
+            },
+          ],
+        }}
+      >
+        <View style={styles.iconContainer}>
+          <Trophy size={60} color="#FFD700" />
+        </View>
+      </Animated.View>
+
+      <Text style={styles.congratsText}>🎉 Congratulations! 🎉</Text>
+      <Text style={styles.winnerText}>You cracked the egg!</Text>
+
+      <View style={styles.prizeContainer}>
+        <Sparkles size={22} color="#FFD700" style={styles.prizeSparkle} />
+        <PrizeContent winner={winner} />
+        <Sparkles size={22} color="#FFD700" style={styles.prizeSparkle} />
+      </View>
+
+      <Text style={styles.eggTypeText}>
+        {winner.egg_type === "golden"
+          ? "🥇 Golden Egg"
+          : winner.egg_type === "silver"
+            ? "🥈 Silver Egg"
+            : winner.egg_type === "company"
+              ? "🏢 Company Egg"
+              : winner.egg_type === "business"
+                ? "💼 Business Egg"
+                : "🥚 Normal Egg"}
+      </Text>
+
+      <Text style={styles.hint}>
+        Your prize will be sent to your registered details
+      </Text>
+    </LinearGradient>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <Animated.View
-          style={[
-            styles.container,
-            { transform: [{ scale: scaleAnim }] },
-          ]}
+          style={[styles.container, { transform: [{ scale: scaleAnim }] }]}
         >
-          {/* 👇 ONLY THIS PART WILL BE SCREENSHOT */}
-          <div ref={captureRef}>
-            <LinearGradient
-              colors={["#FFD700", "#FFA500"]}
-              style={styles.gradient}
+          {Platform.OS === "web" ? (
+            <div ref={captureRef}>{modalBody}</div>
+          ) : (
+            <View>{modalBody}</View>
+          )}
+
+          {Platform.OS === "web" ? (
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleScreenshot}
             >
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <X size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-
-              <Animated.View
-                style={{
-                  transform: [
-                    {
-                      rotate: rotateAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ["0deg", "360deg"],
-                      }),
-                    },
-                  ],
-                }}
-              >
-                <View style={styles.iconContainer}>
-                  <Trophy size={60} color="#FFD700" />
-                </View>
-              </Animated.View>
-
-              <Text style={styles.congratsText}>
-                🎉 Congratulations! 🎉
-              </Text>
-
-              <Text style={styles.winnerText}>
-                You cracked the egg!
-              </Text>
-
-              <View style={styles.prizeContainer}>
-                <Sparkles size={24} color="#FFD700" />
-                <View style={styles.prizeTextWrap}>
-                  <Text style={styles.prizeText}>{prizeHeadline}</Text>
-                  {!!prizeSubline && (
-                    <Text style={styles.prizeSubtext}>{prizeSubline}</Text>
-                  )}
-                </View>
-                <Sparkles size={24} color="#FFD700" />
-              </View>
-
-              <Text style={styles.eggTypeText}>
-                {winner.egg_type === "golden"
-                  ? "🥇 Golden Egg"
-                  : winner.egg_type === "silver"
-                  ? "🥈 Silver Egg"
-                  : winner.egg_type === "company"
-                  ? "🏢 Company Egg"
-                  : winner.egg_type === "business"
-                  ? "💼 Business Egg"
-                  : "🥚 Normal Egg"}
-              </Text>
-
-              <Text style={styles.hint}>
-                Your prize will be sent to your registered details
-              </Text>
-            </LinearGradient>
-          </div>
-
-          <TouchableOpacity
-            style={styles.shareButton}
-            onPress={handleScreenshot}
-          >
-            <Camera size={20} color="#FFFFFF" />
-            <Text style={styles.shareText}>Save / Share</Text>
-          </TouchableOpacity>
+              <Camera size={20} color="#FFFFFF" />
+              <Text style={styles.shareText}>Save / Share</Text>
+            </TouchableOpacity>
+          ) : null}
         </Animated.View>
       </View>
     </Modal>
   );
 }
-
-/* ---------------- STYLES ---------------- */
 
 const styles = StyleSheet.create({
   overlay: {
@@ -181,15 +185,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 16,
   },
   container: {
-    width: "85%",
+    width: "100%",
     maxWidth: 400,
     borderRadius: 24,
     overflow: "hidden",
   },
   gradient: {
-    padding: 30,
+    padding: 24,
     alignItems: "center",
   },
   closeButton: {
@@ -212,42 +217,60 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     marginBottom: 8,
+    textAlign: "center",
   },
   winnerText: {
     fontSize: 18,
     color: "rgba(255,255,255,0.9)",
     marginBottom: 24,
+    textAlign: "center",
   },
   prizeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    width: "100%",
     backgroundColor: "rgba(255,255,255,0.2)",
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     borderRadius: 16,
     marginBottom: 16,
+  },
+  prizeSparkle: {
+    flexShrink: 0,
   },
   prizeTextWrap: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
+    gap: 6,
+    minWidth: 0,
+    paddingHorizontal: 4,
   },
   prizeText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "center",
+    flexShrink: 1,
   },
   prizeSubtext: {
     fontSize: 14,
-    color: "rgba(255,255,255,0.85)",
+    color: "rgba(255,255,255,0.92)",
     textAlign: "center",
+    flexShrink: 1,
+  },
+  prizeCode: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFF8DC",
+    textAlign: "center",
+    flexShrink: 1,
   },
   eggTypeText: {
     fontSize: 14,
     color: "rgba(255,255,255,0.8)",
     marginBottom: 16,
+    textAlign: "center",
   },
   shareButton: {
     marginTop: 12,
@@ -258,6 +281,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
+    alignSelf: "center",
   },
   shareText: {
     color: "#FFFFFF",

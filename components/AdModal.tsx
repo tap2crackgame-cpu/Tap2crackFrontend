@@ -11,7 +11,7 @@ import {
 import { Bell, BellOff } from "lucide-react-native";
 import { Image } from "expo-image";
 import type { PromoAd } from "@/services/ads";
-import FlutterwaveBranding from "@/components/FlutterwaveBranding";
+import AdSponsorBranding from "@/components/AdSponsorBranding";
 
 interface AdModalProps {
   visible: boolean;
@@ -130,7 +130,11 @@ export default function AdModal({
               Watch the full {safeDuration}s ad to {step < totalSteps ? "continue" : "earn your 2x boost"}.
             </Text>
 
-            <FlutterwaveBranding compact />
+            <AdSponsorBranding
+              compact
+              companyName={currentAd?.companyName}
+              companyLogoUrl={currentAd?.companyLogoUrl}
+            />
           </View>
         </View>
       </View>

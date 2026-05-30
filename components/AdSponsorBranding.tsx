@@ -1,0 +1,72 @@
+import React from "react";
+import { Image, StyleSheet, Text, View } from "react-native";
+
+type Props = {
+  companyName?: string | null;
+  companyLogoUrl?: string | null;
+  compact?: boolean;
+};
+
+export default function AdSponsorBranding({
+  companyName,
+  companyLogoUrl,
+  compact = false,
+}: Props) {
+  const name = companyName?.trim();
+  if (!name && !companyLogoUrl?.trim()) return null;
+
+  return (
+    <View style={[styles.wrap, compact && styles.wrapCompact]}>
+      {!!companyLogoUrl?.trim() && (
+        <Image
+          source={{ uri: companyLogoUrl.trim() }}
+          style={compact ? styles.logoCompact : styles.logo}
+          resizeMode="contain"
+          accessibilityLabel={name || "Company logo"}
+        />
+      )}
+      <Text style={[styles.label, compact && styles.labelCompact]}>
+        Powered by {name || "Sponsor"}
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingTop: 16,
+    marginTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255,255,255,0.12)",
+  },
+  wrapCompact: {
+    paddingTop: 10,
+    marginTop: 4,
+    gap: 4,
+  },
+  logo: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  logoCompact: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  label: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
+    fontWeight: "600" as const,
+    letterSpacing: 0.2,
+    textAlign: "center",
+  },
+  labelCompact: {
+    fontSize: 11,
+  },
+});
