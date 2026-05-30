@@ -112,11 +112,9 @@ export function EggProvider({ children }: Props) {
   setTimeout(() => {
     setShowWinModal(false);
     setShowLoseModal(false);
-
-    startFrontendCooldown(type as EggType);
   }, 5000); 
 
-}, [startFrontendCooldown, selectedEggType, setShowWinModal, setShowLoseModal]);
+}, [selectedEggType, setShowWinModal, setShowLoseModal]);
 
 
   //--------------------------
@@ -298,12 +296,16 @@ useEffect(() => {
       const serverTotal = data.egg.totalTaps ?? existing.totalTaps ?? 100;
       const serverRoundId = data.egg.roundId as string | undefined;
       const serverActive = data.egg.isActive ?? existing.isActive;
+      const serverCooldown = data.egg.isCooldown ?? existing.isCooldown;
+      const serverCooldownEnd = data.egg.cooldownEndTime ?? existing.cooldownEndTime;
 
       if (
         existing.currentTaps === serverTaps &&
         existing.totalTaps === serverTotal &&
         existing.roundId === serverRoundId &&
-        existing.isActive === serverActive
+        existing.isActive === serverActive &&
+        existing.isCooldown === serverCooldown &&
+        existing.cooldownEndTime === serverCooldownEnd
       ) {
         return prev;
       }
@@ -315,6 +317,8 @@ useEffect(() => {
           currentTaps: serverTaps,
           totalTaps: serverTotal,
           isActive: serverActive,
+          isCooldown: serverCooldown,
+          cooldownEndTime: serverCooldownEnd,
           roundId: serverRoundId ?? existing.roundId,
         },
       };

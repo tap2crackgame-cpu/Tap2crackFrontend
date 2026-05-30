@@ -294,10 +294,13 @@ const handleEggCracked = useCallback((data: {
   blockedTapperId?: string;
 }) => {
   if (data.antiStreakBlocked) {
-    const isBlockedTapper =
-      String(data.blockedTapperId) === String(authUser?.id);
     setShowWinModal(false);
-    if (isBlockedTapper) {
+    const blocked = data.blockedTapperId;
+    const isBlocked =
+      !!blocked &&
+      (String(blocked) === String(authUser?.id) ||
+        String(blocked) === String(authUser?.name));
+    if (isBlocked) {
       setShowLoseModal(true);
     } else {
       setShowLoseModal(false);
