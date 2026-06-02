@@ -48,6 +48,10 @@ const EGG_TYPE_CONFIGS: Record<EggType, { icon: React.ReactNode; color: string; 
 export default function PrizeIndicator({ prize, eggType }: PrizeIndicatorProps) {
   const config = PRIZE_CONFIGS[prize.type] || PRIZE_CONFIGS.sponsor;
   const eggConfig = EGG_TYPE_CONFIGS[eggType];
+  const maskedValue =
+    prize.type === "airtime"
+      ? "******"
+      : `₦${prize.value.toLocaleString()}`;
 
   return (
     <View style={styles.container}>
@@ -62,7 +66,7 @@ export default function PrizeIndicator({ prize, eggType }: PrizeIndicatorProps) 
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.label}>{config.label}</Text>
-          <Text style={styles.value}>₦{prize.value.toLocaleString().replace(/\d/g, '*')}</Text>
+          <Text style={styles.value}>{maskedValue}</Text>
         </View>
       </LinearGradient>
       

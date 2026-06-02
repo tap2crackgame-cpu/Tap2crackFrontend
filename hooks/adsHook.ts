@@ -240,7 +240,11 @@ export function useAds() {
       clearTimer();
       setRewardGranted(true);
       setRewardGrantedUI(true);
-      setTimeLeft(0);
+      setTimeLeft(3);
+      showAlertAsToast("Success", "2x Tap Boost activated!");
+      setTimeout(() => {
+        dismissAdModal();
+      }, 3000);
     };
 
     const onRejected = (data: { reason?: string; message?: string }) => {
@@ -273,7 +277,7 @@ export function useAds() {
       clearTimer();
       clearStartLoading();
     };
-  }, [socket, beginStep, resetSession, clearTimer, clearStartLoading, rewardGrantedUI]);
+  }, [socket, beginStep, resetSession, clearTimer, clearStartLoading, rewardGrantedUI, dismissAdModal]);
 
   return {
     startAds,

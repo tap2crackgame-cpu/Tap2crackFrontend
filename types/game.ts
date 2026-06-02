@@ -165,7 +165,6 @@ export function formatWinnerPrizeLabel(w: {
     const parts = [
       w.company_name,
       w.prize_description,
-      w.prize_code ? `Code: ${w.prize_code}` : null,
     ].filter(Boolean);
     return parts.join(' · ') || 'Coupon';
   }
@@ -234,6 +233,8 @@ export interface AdminStats {
   total_payout: number;
   total_revenue: number;
   active_users_now: number;
+  daily_ads_watches?: number;
+  daily_rounds_played?: number;
 }
 
 export type DbPayment = {

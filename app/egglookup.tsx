@@ -613,6 +613,16 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
                     <Text style={styles.statValue}>{stats?.active_users_now ?? 0}</Text>
                     <Text style={styles.statLabel}>Active Today</Text>
                   </View>
+                  <View style={[styles.statCard, { borderLeftColor: '#4ECDC4' }]}>
+                    <Video size={20} color="#4ECDC4" />
+                    <Text style={styles.statValue}>{stats?.daily_ads_watches ?? 0}</Text>
+                    <Text style={styles.statLabel}>Ads Watched Today</Text>
+                  </View>
+                  <View style={[styles.statCard, { borderLeftColor: '#FBBF24' }]}>
+                    <Trophy size={20} color="#FBBF24" />
+                    <Text style={styles.statValue}>{stats?.daily_rounds_played ?? 0}</Text>
+                    <Text style={styles.statLabel}>Rounds Played Today</Text>
+                  </View>
                   <View style={[styles.statCard, { borderLeftColor: '#E67E22' }]}>
                     <DollarSign size={20} color="#E67E22" />
                     <Text style={styles.statValue}>{'\u20A6'}{(stats?.total_payout ?? 0).toLocaleString()}</Text>
@@ -732,7 +742,7 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
                         </Text>
                         {w.prize_type === "coupon" && (
                           <Text style={styles.winnerPrizeSubtext}>
-                            {[w.company_name ? w.prize_description : null, w.prize_code ? `Code: ${w.prize_code}` : null]
+                            {[w.company_name ? w.prize_description : null]
                               .filter(Boolean)
                               .join(" · ")}
                           </Text>

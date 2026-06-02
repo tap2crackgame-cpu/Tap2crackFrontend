@@ -43,9 +43,15 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(255,255,255,0.12)",
   },
   wrapCompact: {
-    paddingTop: 10,
-    marginTop: 4,
-    gap: 4,
+    paddingTop: 8,
+    marginTop: 2,
+    gap: 6,
+    width: "100%",
+    borderTopWidth: 0,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
   },
   logo: {
     width: 72,
@@ -54,10 +60,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
   },
   logoCompact: {
-    width: 56,
-    height: 56,
+    width: 64,
+    height: 64,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
   label: {
     color: "rgba(255,255,255,0.65)",
@@ -67,6 +73,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   labelCompact: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: "rgba(255,255,255,0.9)",
   },
 });

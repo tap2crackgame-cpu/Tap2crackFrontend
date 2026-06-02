@@ -18,7 +18,7 @@ import {
 
 } from "react-native";
 
-import { Bell, BellOff } from "lucide-react-native";
+import { Bell, BellOff, X } from "lucide-react-native";
 
 import { Image } from "expo-image";
 
@@ -38,7 +38,7 @@ interface AdModalProps {
 
   timeLeft: number;
 
-  duration: number;
+  duration?: number;
 
   currentAd: PromoAd | null;
 
@@ -60,8 +60,6 @@ export default function AdModal({
 
   timeLeft,
 
-  duration,
-
   currentAd,
 
   rewardGranted = false,
@@ -72,7 +70,7 @@ export default function AdModal({
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
 
 
 
@@ -93,6 +91,12 @@ export default function AdModal({
     el.play().catch(() => {});
 
   }, [visible, currentAd?.id, step, muted]);
+
+  useEffect(() => {
+    if (visible) {
+      setMuted(false);
+    }
+  }, [visible, currentAd?.id, step]);
 
 
 
@@ -116,7 +120,6 @@ export default function AdModal({
 
 
 
-  const safeDuration = Math.max(1, duration || 30);
   const isVideoAd = currentAd?.mediaType === "video";
 
 
@@ -166,35 +169,19 @@ export default function AdModal({
                 <View style={styles.timerBlock}>
 
                   {rewardGranted ? (
-
                     <TouchableOpacity
-
-                      style={[styles.timerCircle, styles.rewardCircle]}
-
+                      style={[styles.countdownPill, styles.rewardPill]}
                       onPress={onDismissReward}
-
                       activeOpacity={0.85}
-
                     >
-
-                      <Text style={styles.rewardText}>Reward{"\n"}granted</Text>
-
-                    </TouchableOpacity>
-
-                  ) : (
-
-                    <>
-
-                      <Text style={styles.timerLabel}>Remaining countdown time</Text>
-
-                      <View style={styles.timerCircle}>
-
-                        <Text style={styles.timerText}>{timeLeft}s</Text>
-
+                      <View style={styles.closeIconWrap}>
+                        <X size={14} color="#0b3a35" />
                       </View>
-
-                    </>
-
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.countdownPill}>
+                      <Text style={styles.countdownText}>{timeLeft}s</Text>
+                    </View>
                   )}
 
                 </View>
@@ -299,29 +286,13 @@ export default function AdModal({
 
 
 
-            <Text style={[styles.hint, isVideoAd && styles.hintOverlay]}>
-
-              {rewardGranted
-
-                ? "Tap Reward granted to close and use your 2x boost."
-
-                : step < totalSteps
-
-                  ? `Watch the full ${safeDuration}s ad to continue.`
-
-                  : `Watch the ad — reward grants with 3 seconds left.`}
-
-            </Text>
-
-
-
-            {!isVideoAd && (
+            <View style={[styles.brandingDock, isVideoAd && styles.brandingDockOverlay]}>
               <AdSponsorBranding
                 compact
                 companyName={currentAd?.companyName}
                 companyLogoUrl={currentAd?.companyLogoUrl}
               />
-            )}
+            </View>
 
           </View>
 
@@ -450,6 +421,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
 
     maxWidth: 88,
+    display: "none",
 
   },
 
@@ -471,54 +443,37 @@ const styles = StyleSheet.create({
 
   },
 
-  timerCircle: {
-
-    width: 56,
-
-    height: 56,
-
-    borderRadius: 28,
-
-    borderWidth: 2,
-
-    borderColor: "#FFD700",
-
+  countdownPill: {
+    minWidth: 74,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.7)",
+    backgroundColor: "rgba(20,20,20,0.58)",
     alignItems: "center",
-
     justifyContent: "center",
-
-    backgroundColor: "rgba(0,0,0,0.35)",
-
   },
-
-  rewardCircle: {
-
-    borderColor: "#4ECDC4",
-
-    backgroundColor: "rgba(78,205,196,0.15)",
-
-    width: 72,
-
-    height: 72,
-
-    borderRadius: 36,
-
+  rewardPill: {
+    width: 40,
+    minWidth: 40,
+    height: 40,
+    borderRadius: 20,
+    borderColor: "rgba(78,205,196,0.8)",
+    backgroundColor: "rgba(78,205,196,0.2)",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
+  countdownText: { color: "#FFD700", fontWeight: "900", fontSize: 17, letterSpacing: 0.3 },
 
-  timerText: { color: "#FFD700", fontWeight: "800", fontSize: 16 },
-
-  rewardText: {
-
-    color: "#4ECDC4",
-
-    fontWeight: "800",
-
-    fontSize: 11,
-
-    textAlign: "center",
-
-    lineHeight: 14,
-
+  rewardText: { display: "none" },
+  closeIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(152,255,240,0.9)",
   },
 
   title: {
@@ -571,26 +526,19 @@ const styles = StyleSheet.create({
 
   loadingText: { color: "rgba(255,255,255,0.6)" },
 
-  hint: {
-
-    color: "rgba(255,255,255,0.55)",
-
-    fontSize: 12,
-
-    textAlign: "center",
-
-    marginBottom: 4,
-
+  hint: { display: "none" },
+  hintOverlay: { display: "none" },
+  brandingDock: {
+    width: "50%",
+    alignSelf: "center",
+    marginBottom: 8,
   },
-  hintOverlay: {
+  brandingDockOverlay: {
     position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 44,
-    zIndex: 5,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    paddingVertical: 8,
-    borderRadius: 10,
+    left: "25%",
+    right: "25%",
+    bottom: 10,
+    zIndex: 6,
   },
 
 });
