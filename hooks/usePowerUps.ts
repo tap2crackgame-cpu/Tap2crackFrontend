@@ -1,15 +1,22 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { PowerUp, PowerUpType, mergePowerUpInventory } from "@/types/game";
 import { useSocket } from "@/hooks/SocketContext";
 import { useAuth } from "@/context/AuthContext";
+import { showAlertAsToast } from "@/context/ToastContext";
 
 type InventoryCounts = Record<PowerUpType, number>;
 
 type UsePowerUpSocketProps = {
   setInventory: React.Dispatch<React.SetStateAction<InventoryCounts>>;
   setActivePowerUp: React.Dispatch<React.SetStateAction<PowerUp | null>>;
-  onNoInventory?: (type: PowerUpType) => void; 
+  onNoInventory?: (type: PowerUpType) => void;
 };
+
+function powerUpLabel(type: PowerUpType | string, multiplier?: number): string {
+  const t = String(type).toUpperCase();
+  if (multiplier === 3 || t === "3X" || t === "X3") return "3x";
+  return "2x";
+}
 
 export function usePowerUp({
   setInventory,
@@ -19,11 +26,14 @@ export function usePowerUp({
   const socket = useSocket();
   const { authUser } = useAuth();
   const userId = authUser?.id;
-  
+  const [activatingPowerUp, setActivatingPowerUp] = useState<PowerUpType | null>(
+    null
+  );
+
   const activatePowerUp = useCallback(
     (type: PowerUpType) => {
       if (!socket || !userId) return;
-
+      setActivatingPowerUp(type);
       socket.emit("activate_powerup", {
         userId,
         type,
@@ -57,6 +67,7 @@ export function usePowerUp({
       "powerup_activated",
       (data: { type: PowerUpType; multiplier: number }) => {
         console.log(" SOCKET: powerup_activated received:", data);
+        setActivatingPowerUp(null);
         setActivePowerUp({
           type: data.type,
           multiplier: data.multiplier,
@@ -64,13 +75,16 @@ export function usePowerUp({
           active: true,
           count: 1,
         });
+        const label = powerUpLabel(data.type, data.multiplier);
+        showAlertAsToast("Success", `${label} Tap Boost activated!`);
       }
     );
 
     socket.on("powerup_failed", (data: { reason: string; type?: PowerUpType }) => {
       console.error("❌ SOCKET: powerup_failed:", data.reason, "for type:", data.type);
+      setActivatingPowerUp(null);
       if (data.reason === "NO_INVENTORY" && onNoInventory && data.type) {
-        onNoInventory(data.type); 
+        onNoInventory(data.type);
       }
     });
 
@@ -84,5 +98,6 @@ export function usePowerUp({
   return {
     activatePowerUp,
     purchasePowerUp,
+    activatingPowerUp,
   };
 }

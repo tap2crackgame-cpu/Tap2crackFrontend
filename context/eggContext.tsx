@@ -273,9 +273,18 @@ useEffect(() => {
     return;
   }
 
+  const total = Number(egg.totalTaps ?? 0);
+  const current = Number(egg.currentTaps ?? 0);
+  const atFull = total > 0 && current >= total;
+
   setEggs(prev => ({
     ...prev,
-    [typeKey]: egg,
+    [typeKey]: {
+      ...egg,
+      ...(atFull && egg.isCooldown
+        ? { currentTaps: total, isActive: false }
+        : {}),
+    },
   }));
 };
 

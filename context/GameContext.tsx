@@ -73,6 +73,9 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     currentDuration: adDuration,
     totalSteps: adTotalSteps,
     rewardGranted,
+    rewardGrantedUI,
+    dismissAdModal,
+    isStartingAds,
   } = useAds();
   const socketRef = useRef(socket);
 
@@ -113,7 +116,7 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
 
 
   /*========PowerUPS=======*/
-  const { activatePowerUp, purchasePowerUp } = usePowerUp({
+  const { activatePowerUp, purchasePowerUp, activatingPowerUp } = usePowerUp({
     setInventory,
     setActivePowerUp,
     onNoInventory: (type) => {
@@ -421,13 +424,17 @@ const handleEggCracked = useCallback((data: {
     showWinModal,
     showLoseModal,
     currentWinner,
-    showAd: isWatching,
-    isWatchingAd: isWatching,
+    showAd: isWatching || rewardGrantedUI,
+    isWatchingAd: isWatching || rewardGrantedUI,
     adStep,
     adTimeLeft,
     adDuration,
     adCurrent: currentAd,
     adTotalSteps,
+    adRewardGrantedUI: rewardGrantedUI,
+    dismissAdModal,
+    isStartingAds,
+    activatingPowerUp,
     isPaymentLoading,
     powerUpUsedThisRound,
     handleTap,
@@ -452,6 +459,9 @@ const handleEggCracked = useCallback((data: {
     showLoseModal,
     currentWinner,
     isWatching,
+    rewardGrantedUI,
+    dismissAdModal,
+    isStartingAds,
     adStep,
     adTimeLeft,
     adDuration,
@@ -464,6 +474,7 @@ const handleEggCracked = useCallback((data: {
     activePowerUp,
     activatePowerUp,
     purchasePowerUp,
+    activatingPowerUp,
     showPurchaseModal,
     pendingType,
     otherPlayersTaps,

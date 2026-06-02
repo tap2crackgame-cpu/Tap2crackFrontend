@@ -73,6 +73,10 @@ export default function Tap2CrackGame() {
     adDuration,
     adCurrent,
     adTotalSteps,
+    adRewardGrantedUI,
+    dismissAdModal,
+    isStartingAds,
+    activatingPowerUp,
     currentWinner, 
     activePowerUp, 
     isPaymentLoading,
@@ -114,6 +118,15 @@ export default function Tap2CrackGame() {
     if (live["2x"] > 0 || live["3x"] > 0) return live;
     return mergePowerUpInventory(user?.powerUpInventory, live);
   }, [user?.powerUpInventory, inventory]);
+
+  const isPowerUpActivating = useCallback(
+    (type: "2x" | "3x") => {
+      if (!activatingPowerUp) return false;
+      const norm = (v: string) => v.toLowerCase().replace(/^x/, "");
+      return norm(String(activatingPowerUp)) === norm(type);
+    },
+    [activatingPowerUp]
+  );
 
   const handleStartPayment = useCallback(
     (payload: {
@@ -442,9 +455,15 @@ export default function Tap2CrackGame() {
               style={[styles.desktopRailBtn, (!canTapSideRails || isPaymentLoading) && styles.desktopRailBtnDisabled]}
             >
               <LinearGradient colors={activePowerUp?.type === "2x" ? ["#FFD700", "#FFA500"] : ["#4ECDC4", "#44B3AB"]} style={styles.desktopRailGradient}>
+                {isPowerUpActivating("2x") ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
                 <Zap size={22} color="#FFF" />
                 <Text style={styles.desktopRailMult}>2x</Text>
                 <Text style={styles.desktopRailCost}>₦{railCost2x}</Text>
+                  </>
+                )}
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
@@ -454,9 +473,15 @@ export default function Tap2CrackGame() {
               style={[styles.desktopRailBtn, (!canTapSideRails || isPaymentLoading) && styles.desktopRailBtnDisabled]}
             >
               <LinearGradient colors={activePowerUp?.type === "3x" ? ["#FFD700", "#FFA500"] : ["#9B59B6", "#8E44AD"]} style={styles.desktopRailGradient}>
+                {isPowerUpActivating("3x") ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
                 <Crown size={22} color="#FFF" />
                 <Text style={styles.desktopRailMult}>3x</Text>
                 <Text style={styles.desktopRailCost}>₦{railCost3x}</Text>
+                  </>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -466,13 +491,19 @@ export default function Tap2CrackGame() {
           <View style={[styles.desktopRailRight, { top: Math.min(height * 0.26, height * 0.5 - 100) }]} pointerEvents="box-none">
             <TouchableOpacity
               activeOpacity={0.9}
-              disabled={!canTapSideRails}
+              disabled={!canTapSideRails || isStartingAds}
               onPress={() => powerUpPanelRef.current?.pressWatchAd()}
-              style={[styles.desktopWatchAdBtn, !canTapSideRails && styles.desktopRailBtnDisabled]}
+              style={[styles.desktopWatchAdBtn, (!canTapSideRails || isStartingAds) && styles.desktopRailBtnDisabled]}
             >
+              {isStartingAds ? (
+                <ActivityIndicator color="#FFD700" size="small" />
+              ) : (
+                <>
               <Text style={styles.desktopWatchAdEmoji}>📺</Text>
               <Text style={styles.desktopWatchAdText}>Ad</Text>
               <Text style={styles.desktopWatchAdSub}>2x</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         ) : null}
@@ -702,6 +733,8 @@ export default function Tap2CrackGame() {
               userEmail={user.email  || ""}
               inventoryCounts={displayInventory}
               hideInlinePowerActions={isWideWeb}
+              activatingPowerUp={activatingPowerUp}
+              isStartingAds={isStartingAds}
             />
           )}
 
@@ -815,6 +848,8 @@ export default function Tap2CrackGame() {
           timeLeft={adTimeLeft}
           duration={adDuration || 30}
           currentAd={adCurrent}
+          rewardGranted={adRewardGrantedUI}
+          onDismissReward={dismissAdModal}
         />
         {token && paymentPayload && (
           <PaymentModal

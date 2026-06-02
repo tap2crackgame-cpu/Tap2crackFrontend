@@ -39,10 +39,12 @@ interface PowerUpPanelProps {
 
   adWatched2xAvailable: boolean;
   onWatchAd: () => void;
+  isStartingAds?: boolean;
 
   isHappyHour?: boolean;
   hideInlinePowerActions?: boolean;
   powerUpUsedThisRound?: boolean;
+  activatingPowerUp?: PowerUpType | null;
 }
 
 const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
@@ -65,6 +67,10 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
       useState<PowerUpType | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+    const [pendingPressType, setPendingPressType] =
+      useState<PowerUpType | null>(null);
+
+    const activatingPowerUp = props.activatingPowerUp;
 
     if (!egg) return null;
 
@@ -98,31 +104,38 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
     })?.count ?? 0;
 
 
+    const isPowerUpLoading = (type: PowerUpType) => {
+      const norm = (v: string) => v.toLowerCase().replace(/^x/, "");
+      const target = norm(String(type));
+      if (pendingPressType && norm(String(pendingPressType)) === target) return true;
+      if (activatingPowerUp && norm(String(activatingPowerUp)) === target) return true;
+      return false;
+    };
+
     const handlePowerUpPress = (type: PowerUpType) => {
-  if (isDisabled) return;
+  if (isDisabled || pendingPressType || activatingPowerUp) return;
 
   const is2x = type === '2x' || type === 'X2';
   const currentCount = is2x ? count2x : count3x;
-  
-  console.log(`⚡ [PANEL CLICK] Type: ${type} | Detected Count: ${currentCount}`);
+  const normalizedType = (is2x ? 'X2' : 'X3') as PowerUpType;
 
-  if (currentCount > 0) {
-    const normalizedType = is2x ? 'X2' : 'X3';
-    
-    setSelectedPowerUp(normalizedType as PowerUpType);
-    
-    console.log(`🚀 Triggering active event for type: ${normalizedType}`);
-    onActivate(normalizedType as PowerUpType);
-  } else {
-    const normalizedType = is2x ? 'X2' : 'X3';
-    setSelectedPowerUp(normalizedType as PowerUpType);
-    setQuantity(1);
-    setShowPurchaseModal(true);
-  }
+  setPendingPressType(type);
+
+  setTimeout(() => {
+    if (currentCount > 0) {
+      setSelectedPowerUp(normalizedType);
+      onActivate(normalizedType);
+    } else {
+      setSelectedPowerUp(normalizedType);
+      setQuantity(1);
+      setShowPurchaseModal(true);
+    }
+    setPendingPressType(null);
+  }, 320);
 };
 
     const handleWatchAd = () => {
-      if (!props.adWatched2xAvailable || isDisabled) return;
+      if (!props.adWatched2xAvailable || isDisabled || props.isStartingAds) return;
       onWatchAd();
     };
 
@@ -213,12 +226,18 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
               colors={(activePowerUp?.type === '2x' || activePowerUp?.type === 'X2') ? ['#FFD700', '#FFA500'] : ['#4ECDC4', '#45B7AF']}
               style={styles.powerUpGradient} 
             >
+              {isPowerUpLoading('2x') ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
               <Text style={styles.powerUpMultiplier}>2x</Text>
               <Text style={styles.powerUpCost}>₦{cost2x}</Text>
               
               <View style={styles.powerUpInventoryBadge}>
                 <Text style={styles.powerUpInventoryBadgeText}>🎟️ {count2x}</Text>
               </View>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
@@ -237,12 +256,18 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
               colors={(activePowerUp?.type === '3x' || activePowerUp?.type === 'X3') ? ['#FFD700', '#FFA500'] : ['#9B59B6', '#8E44AD']}
               style={styles.powerUpGradient}
             >
+              {isPowerUpLoading('3x') ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
               <Text style={styles.powerUpMultiplier}>3x</Text>
               <Text style={styles.powerUpCost}>₦{cost3x}</Text>
               
               <View style={styles.powerUpInventoryBadge}>
                 <Text style={styles.powerUpInventoryBadgeText}>🎟️ {count3x}</Text>
               </View>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
               </View>
@@ -265,11 +290,16 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
       onPress={handleWatchAd}
       style={[
         styles.freeOption,
-        (!props.adWatched2xAvailable || isDisabled) && styles.freeOptionDisabled,
+        (!props.adWatched2xAvailable || isDisabled || props.isStartingAds) &&
+          styles.freeOptionDisabled,
       ]}
-      disabled={!props.adWatched2xAvailable || isDisabled}
+      disabled={!props.adWatched2xAvailable || isDisabled || props.isStartingAds}
     >
-      <Text style={styles.freeOptionText}>📺 Watch Ad for Free 2x</Text>
+      {props.isStartingAds ? (
+        <ActivityIndicator color="#FFD700" size="small" />
+      ) : (
+        <Text style={styles.freeOptionText}>📺 Watch Ad for Free 2x</Text>
+      )}
     </TouchableOpacity>
 
     <TouchableOpacity 

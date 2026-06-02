@@ -76,7 +76,7 @@ export default function PaymentModal({
 
   const pollVerify = async (ref: string) => {
     setBusy(true);
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 40; i++) {
       try {
         const r = await verifyPayment(token, ref);
         if (r.status === "SUCCESS") {
@@ -92,10 +92,15 @@ export default function PaymentModal({
           setBusy(false);
           return;
         }
-      } catch {
-        /* keep polling */
+      } catch (e) {
+        const msg = (e as Error).message || "";
+        if (msg.includes("401") || msg.includes("403")) {
+          paymentError("Session expired — sign in again and tap Check payment");
+          setBusy(false);
+          return;
+        }
       }
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 2500));
     }
     paymentError("Verification timed out — tap “Check payment” to try again");
     setBusy(false);

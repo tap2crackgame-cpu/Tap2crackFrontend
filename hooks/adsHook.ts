@@ -13,7 +13,7 @@ const AD_REJECT_MESSAGES: Record<string, string> = {
   FIRST_AD_TOO_SHORT: "Please watch the full ad before continuing.",
   SECOND_AD_TOO_SHORT: "Please watch the full ad before claiming your reward.",
   ALREADY_REWARDED: "You already earned 2x for this round.",
-  NO_ADS_AVAILABLE: "No ads are available yet. Check back soon.",
+  NO_ADS_AVAILABLE: "No active Ads",
 };
 
 export function useAds() {
@@ -25,10 +25,14 @@ export function useAds() {
   const [currentAd, setCurrentAd] = useState<PromoAd | null>(null);
   const [totalSteps, setTotalSteps] = useState(2);
   const [rewardGranted, setRewardGranted] = useState(false);
+  const [rewardGrantedUI, setRewardGrantedUI] = useState(false);
   const [currentDuration, setCurrentDuration] = useState(30);
+  const [isStartingAds, setIsStartingAds] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionRef = useRef<string | null>(null);
+  const stepRef = useRef<AdStep>(0);
   const stepCompletedRef = useRef(false);
   const currentDurationRef = useRef(30);
 
@@ -44,27 +48,59 @@ export function useAds() {
     setSessionId(null);
     sessionRef.current = null;
     setStep(0);
+    stepRef.current = 0;
     setIsWatching(false);
     setTimeLeft(0);
     setCurrentAd(null);
     setCurrentDuration(30);
     currentDurationRef.current = 30;
     stepCompletedRef.current = false;
+    setRewardGrantedUI(false);
   }, [clearTimer]);
 
+  const dismissAdModal = useCallback(() => {
+    resetSession();
+  }, [resetSession]);
+
+  const clearStartLoading = useCallback(() => {
+    if (startTimeoutRef.current) {
+      clearTimeout(startTimeoutRef.current);
+      startTimeoutRef.current = null;
+    }
+    setIsStartingAds(false);
+  }, []);
+
+  const emitAdProgress = useCallback(() => {
+    socket?.emit("ads_progress", {
+      sessionId: sessionRef.current,
+      durationSeconds: currentDurationRef.current,
+    });
+  }, [socket]);
+
   const startCountdown = useCallback(
-    (duration: number, onDone: () => void) => {
+    (duration: number, adStep: AdStep) => {
       setTimeLeft(duration);
       stepCompletedRef.current = false;
+      stepRef.current = adStep;
       clearTimer();
 
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
+          if (
+            stepRef.current === 2 &&
+            prev === 3 &&
+            !stepCompletedRef.current
+          ) {
+            stepCompletedRef.current = true;
+            emitAdProgress();
+            return 3;
+          }
+
           if (prev <= 1) {
             clearTimer();
             if (!stepCompletedRef.current) {
               stepCompletedRef.current = true;
-              onDone();
+              emitAdProgress();
             }
             return 0;
           }
@@ -72,12 +108,14 @@ export function useAds() {
         });
       }, 1000);
     },
-    [clearTimer]
+    [clearTimer, emitAdProgress]
   );
 
   const resolveAdDuration = useCallback(
     async (ad: PromoAd | null | undefined, fallback: number) => {
-      const normalizedFallback = Number.isFinite(fallback) ? Math.max(5, Math.min(30, Math.round(fallback))) : 30;
+      const normalizedFallback = Number.isFinite(fallback)
+        ? Math.max(5, Math.min(30, Math.round(fallback)))
+        : 30;
       if (!ad || ad.mediaType !== "video" || Platform.OS !== "web") {
         return normalizedFallback;
       }
@@ -92,13 +130,18 @@ export function useAds() {
             resolve(value);
           };
 
-          const timeout = window.setTimeout(() => finish(normalizedFallback), 6000);
+          const timeout = window.setTimeout(
+            () => finish(normalizedFallback),
+            6000
+          );
           v.preload = "metadata";
           v.muted = true;
           v.src = ad.mediaUrl;
           v.onloadedmetadata = () => {
             window.clearTimeout(timeout);
-            const d = Number.isFinite(v.duration) ? Math.ceil(v.duration) : normalizedFallback;
+            const d = Number.isFinite(v.duration)
+              ? Math.ceil(v.duration)
+              : normalizedFallback;
             finish(Math.max(5, Math.min(30, d)));
           };
           v.onerror = () => {
@@ -125,8 +168,12 @@ export function useAds() {
     }) => {
       sessionRef.current = data.sessionId;
       setSessionId(data.sessionId);
-      setStep(data.step as AdStep);
+      const nextStep = data.step as AdStep;
+      setStep(nextStep);
+      stepRef.current = nextStep;
       setIsWatching(true);
+      setRewardGrantedUI(false);
+      clearStartLoading();
       setTotalSteps(data.totalSteps ?? 2);
       setCurrentAd(data.ad ?? null);
 
@@ -134,24 +181,34 @@ export function useAds() {
       resolveAdDuration(data.ad ?? null, fallbackDuration).then((duration) => {
         currentDurationRef.current = duration;
         setCurrentDuration(duration);
-        startCountdown(duration, () => {
-          socket?.emit("ads_progress", {
-            sessionId: sessionRef.current,
-            durationSeconds: currentDurationRef.current,
-          });
-        });
+        startCountdown(duration, nextStep);
       });
     },
-    [socket, startCountdown, resolveAdDuration]
+    [startCountdown, resolveAdDuration, clearStartLoading]
   );
 
   const startAds = useCallback(
     (roundId: string) => {
-      if (!socket) return;
+      if (!socket) return false;
+      if (isStartingAds || isWatching) return false;
+
+      setIsStartingAds(true);
       setRewardGranted(false);
+      setRewardGrantedUI(false);
+
+      if (startTimeoutRef.current) {
+        clearTimeout(startTimeoutRef.current);
+      }
+      startTimeoutRef.current = setTimeout(() => {
+        startTimeoutRef.current = null;
+        setIsStartingAds(false);
+        showAlertAsToast("Ad unavailable", "Could not start ad. Please try again.");
+      }, 12000);
+
       socket.emit("watch_ads", { roundId, adType: "admin" });
+      return true;
     },
-    [socket]
+    [socket, isStartingAds, isWatching]
   );
 
   useEffect(() => {
@@ -172,6 +229,7 @@ export function useAds() {
       ad?: PromoAd;
     }) => {
       if (!sessionRef.current) return;
+      stepCompletedRef.current = false;
       beginStep({
         sessionId: sessionRef.current,
         ...data,
@@ -179,12 +237,20 @@ export function useAds() {
     };
 
     const onReward = () => {
-      resetSession();
+      clearTimer();
       setRewardGranted(true);
+      setRewardGrantedUI(true);
+      setTimeLeft(0);
     };
 
     const onRejected = (data: { reason?: string; message?: string }) => {
+      if (rewardGrantedUI) return;
+      clearStartLoading();
       resetSession();
+      if (data.reason === "NO_ADS_AVAILABLE") {
+        showAlertAsToast("No active Ads", "No active Ads");
+        return;
+      }
       const msg =
         data.message ||
         AD_REJECT_MESSAGES[data.reason ?? ""] ||
@@ -205,12 +271,14 @@ export function useAds() {
       socket.off("ad_rejected", onRejected);
       socket.off("ad_already_started", onStarted);
       clearTimer();
+      clearStartLoading();
     };
-  }, [socket, beginStep, resetSession, clearTimer]);
+  }, [socket, beginStep, resetSession, clearTimer, clearStartLoading, rewardGrantedUI]);
 
   return {
     startAds,
     isWatching,
+    isStartingAds,
     step,
     timeLeft,
     sessionId,
@@ -218,6 +286,8 @@ export function useAds() {
     currentDuration,
     totalSteps,
     rewardGranted,
+    rewardGrantedUI,
+    dismissAdModal,
     resetSession,
   };
 }
