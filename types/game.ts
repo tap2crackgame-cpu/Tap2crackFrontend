@@ -179,12 +179,20 @@ export function formatWinnerPrizeLabel(w: {
 /** Normalize API/socket winner payloads to a consistent Winner shape. */
 export function normalizeWinner(raw: Record<string, unknown> | null | undefined): Winner {
   const w = raw ?? {};
-  const wonAt = w.won_at ?? w.wonAt;
   const user = w.user as { name?: string; avatar?: string } | undefined;
 
+  const wonAtRaw = w.won_at ?? w.wonAt;
+  const wonAtStr =
+    wonAtRaw instanceof Date
+      ? wonAtRaw.toISOString()
+      : String(wonAtRaw ?? new Date().toISOString());
+
   return {
-    id: String(w.id ?? w.user_id ?? ""),
-    user_id: String(w.user_id ?? w.userId ?? w.id ?? ""),
+    id: String(
+      w.id ??
+        `win-${w.user_id ?? w.userId ?? "anon"}-${wonAtStr}`
+    ),
+    user_id: String(w.user_id ?? w.userId ?? ""),
     user_name: String(
       w.user_name ?? w.username ?? user?.name ?? "Anonymous"
     ),
@@ -200,10 +208,7 @@ export function normalizeWinner(raw: Record<string, unknown> | null | undefined)
     prize_value: Number(w.prize_value ?? w.prizeValue ?? 0),
     prize_code: (w.prize_code as string | null) ?? (w.couponCode as string | null) ?? null,
     company_name: (w.company_name as string | null) ?? null,
-    won_at:
-      wonAt instanceof Date
-        ? wonAt.toISOString()
-        : String(wonAt ?? new Date().toISOString()),
+    won_at: wonAtStr,
     screenshot_url: (w.screenshot_url as string | null) ?? null,
   };
 }

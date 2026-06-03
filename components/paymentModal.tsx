@@ -17,6 +17,8 @@ import {
 import FlutterwaveBranding from "@/components/FlutterwaveBranding";
 import { toast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
+import PaymentSuccessCheckmark from "@/components/PaymentSuccessCheckmark";
+import { playGameSound } from "@/utils/sounds";
 
 type Stage = "confirm" | "bank" | "verifying" | "done" | "error";
 
@@ -82,9 +84,10 @@ export default function PaymentModal({
         if (r.status === "SUCCESS") {
           setStage("done");
           setBusy(false);
+          void playGameSound("paymentSuccess");
           toast.success("Payment successful");
           onSuccess();
-          setTimeout(close, 1200);
+          setTimeout(close, 2200);
           return;
         }
         if (r.status === "FAILED") {
@@ -292,7 +295,7 @@ export default function PaymentModal({
 
             {stage === "done" && (
               <View style={s.center}>
-                <Text style={s.success}>Payment successful</Text>
+                <PaymentSuccessCheckmark />
                 <FlutterwaveBranding compact />
               </View>
             )}
@@ -355,7 +358,6 @@ const s = StyleSheet.create({
   cancelText: { color: "rgba(255,255,255,0.5)", fontSize: 13 },
   help: { color: "rgba(255,255,255,0.7)", fontSize: 13, textAlign: "center" },
   center: { alignItems: "center", padding: 20, gap: 12 },
-  success: { color: "#4ECDC4", fontSize: 15, fontWeight: "600" as const },
   confirmBox: {
     backgroundColor: "rgba(255,215,0,0.08)",
     borderRadius: 12,

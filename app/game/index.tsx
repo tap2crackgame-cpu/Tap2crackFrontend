@@ -644,6 +644,48 @@ export default function Tap2CrackGame() {
   )}
 </View>
 
+          {Array.isArray(winners) && winners.length > 0 && (
+            <View style={[styles.winnersSection, { paddingHorizontal: padH }]}>
+              <Text style={styles.sectionTitle}>Recent Winners</Text>
+              {winners.slice(0, 3).map((winner, index) => (
+                <View key={winner.id} style={styles.winnerCard}>
+                  <Text style={styles.winnerRank}>#{index + 1}</Text>
+                  <View style={styles.winnerAvatar}>
+                    <Text style={styles.winnerInitial}>
+                      {winner.user_name?.[0]?.toUpperCase() || "?"}
+                    </Text>
+                  </View>
+                  <View style={styles.winnerDetails}>
+                    <Text style={styles.winnerName}>
+                      {winner.user_name || "Anonymous"}
+                    </Text>
+                    <Text style={styles.winnerPrize}>
+                      {winner.prize_type === "coupon" && winner.company_name
+                        ? winner.company_name
+                        : winner.prize_description}
+                      {winner.prize_type !== "coupon" && winner.prize_value
+                        ? ` · ₦${Number(winner.prize_value).toLocaleString()}`
+                        : ""}
+                    </Text>
+                    {winner.prize_type === "coupon" && winner.company_name && (
+                      <Text style={styles.winnerPrizeSub}>
+                        {winner.prize_description}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.winnerTime}>
+                    {winner.won_at
+                      ? new Date(winner.won_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "--"}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           {onlineUsers > 1 && (
             <View style={[styles.liveIndicator, { marginHorizontal: padH }]}>
               <Flame size={16} color="#FF6B00" />
@@ -775,49 +817,6 @@ export default function Tap2CrackGame() {
               ))}
             </View>
           </View>
-
-          {Array.isArray(winners) &&
-  winners.slice(0, 3).map((winner, index) => (
-    <View key={winner.id} style={styles.winnerCard}>
-      <Text style={styles.winnerRank}>#{index + 1}</Text>
-
-      <View style={styles.winnerAvatar}>
-        <Text style={styles.winnerInitial}>
-          {winner.user_name?.[0]?.toUpperCase() || "?"}
-        </Text>
-      </View>
-
-      <View style={styles.winnerDetails}>
-        <Text style={styles.winnerName}>
-          {winner.user_name || "Anonymous"}
-        </Text>
-        <Text style={styles.winnerPrize}>
-          {winner.prize_type === "coupon" && winner.company_name
-            ? winner.company_name
-            : winner.prize_description}
-          {winner.prize_type !== "coupon" && winner.prize_value
-            ? ` · ₦${Number(winner.prize_value).toLocaleString()}`
-            : ""}
-        </Text>
-        {winner.prize_type === "coupon" && (
-          <Text style={styles.winnerPrizeSub}>
-            {[winner.company_name ? winner.prize_description : null, winner.prize_code ? `Code: ${winner.prize_code}` : null]
-              .filter(Boolean)
-              .join(" · ")}
-          </Text>
-        )}
-      </View>
-
-      <Text style={styles.winnerTime}>
-        {winner.won_at
-          ? new Date(winner.won_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "--"}
-      </Text>
-    </View>
-))}
 
           <BengzFooter />
           </View>

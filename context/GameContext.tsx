@@ -18,6 +18,7 @@ import {
   normalizeWinner,
 } from '@/types/game';
 import { fetchWinners } from '@/services/fetchleaderboard';
+import { playGameSound } from '@/utils/sounds';
 
 
 // Keep client limits close to backend limits for smoother tapping on mobile.
@@ -37,7 +38,7 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     setShowLoseModal,
     syncEggRoomState,
   } = useEgg();
-  const { authUser} = useAuth();
+  const { authUser, refreshProfile } = useAuth();
   const  socket  = useSocket();
   const userId = authUser?.id;
   const currentEgg = eggs[selectedEggType];
@@ -91,6 +92,18 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   const [isSimulatingPlayers, setIsSimulatingPlayers] = useState(false);
   const winnersRef = useRef(winners);
   winnersRef.current = winners;
+
+  const loadWinnersFromApi = useCallback(async () => {
+    try {
+      const rows = await fetchWinners(10);
+      if (!Array.isArray(rows)) return;
+      setWinners(
+        rows.map((row) => normalizeWinner(row as Record<string, unknown>))
+      );
+    } catch (err) {
+      console.warn("Failed to load recent winners:", err);
+    }
+  }, []);
   const powerUpUsedRef = useRef(powerUpUsedThisRound);
   powerUpUsedRef.current = powerUpUsedThisRound;
 
@@ -306,6 +319,8 @@ const handleEggCracked = useCallback((data: {
   antiStreakBlocked?: boolean;
   blockedTapperId?: string;
 }) => {
+  void playGameSound('eggCrack');
+
   if (data.antiStreakBlocked) {
     eggCrackedLockRef.current = true;
     setShowWinModal(false);
@@ -334,14 +349,22 @@ const handleEggCracked = useCallback((data: {
     return [winner, ...withoutDup].slice(0, 10);
   });
 
+  void loadWinnersFromApi();
+
   if (isMe) {
+    if (winner.prize_type === 'coupon') {
+      void playGameSound('couponWin');
+    } else if (winner.prize_type === 'airtime' || winner.prize_type === 'cash') {
+      void playGameSound('airtimeWin');
+    }
+    void refreshProfile(true);
     setShowWinModal(true);
     setShowLoseModal(false);
   } else {
     setShowLoseModal(true);
     setShowWinModal(false); 
   }
-}, [authUser, setShowWinModal, setShowLoseModal]); 
+}, [authUser, setShowWinModal, setShowLoseModal, loadWinnersFromApi, refreshProfile]); 
 
   /*========Socket Handlers========*/
 
@@ -357,6 +380,13 @@ const handleEggCracked = useCallback((data: {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadWinnersFromApi();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [loadWinnersFromApi]);
 
   useEffect(() => {
   if (!socket) return;

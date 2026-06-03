@@ -2,8 +2,7 @@ import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, Sha
 import { LinearGradient } from "expo-linear-gradient";
 import { Trophy, Share2, Sparkles } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
-import { useQuery } from "@tanstack/react-query";
-import { fetchWinners } from "@/services/fetchleaderboard";
+import { useWinnersQuery } from "@/hooks/useWinnersQuery";
 import { Winner, formatWinnerPrizeLabel } from "@/types/game";
 
 const ICONS: Record<string, string> = {
@@ -14,12 +13,7 @@ const ICONS: Record<string, string> = {
 };
 
 export default function Tap2CrackWinners() {
-  const { data: winners = [], isLoading } = useQuery<Winner[]>({
-    queryKey: ['winners'],
-    queryFn: () => fetchWinners(50),
-    staleTime: 30000,
-    refetchInterval: 60000,
-  });
+  const { data: winners = [], isLoading } = useWinnersQuery(50);
 
   const onShare = async (w: Winner) => {
     try {

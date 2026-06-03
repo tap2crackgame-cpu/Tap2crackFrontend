@@ -18,7 +18,7 @@ import {
 
 } from "react-native";
 
-import { Bell, BellOff, X } from "lucide-react-native";
+import { Volume2, VolumeX, X } from "lucide-react-native";
 
 import { Image } from "expo-image";
 
@@ -154,11 +154,11 @@ export default function AdModal({
 
                     {muted ? (
 
-                      <BellOff size={16} color="#FFD700" />
+                      <VolumeX size={16} color="#FFD700" />
 
                     ) : (
 
-                      <Bell size={16} color="#4ECDC4" />
+                      <Volume2 size={16} color="#4ECDC4" />
 
                     )}
 

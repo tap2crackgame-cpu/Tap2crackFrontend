@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         wins,
         weeklyEggsCracked: backend.stats?.weeklyEggsCracked ?? 0,
         totalTaps: backend.stats?.totalTaps ?? 0,
-        rank: getUserRank(wins),
+        rank: backend.stats?.rank ?? getUserRank(wins),
       },
 
       powerUps: pUps,
