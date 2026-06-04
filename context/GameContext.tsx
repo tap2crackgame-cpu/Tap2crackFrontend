@@ -19,6 +19,11 @@ import {
 } from '@/types/game';
 import { fetchWinners } from '@/services/fetchleaderboard';
 import { playGameSound, playCrackMilestones } from '@/utils/sounds';
+import {
+  loadCachedRecentWinners,
+  mergeWinnersByRecency,
+  saveCachedRecentWinners,
+} from '@/utils/recentWinnersCache';
 
 
 // Keep client limits close to backend limits for smoother tapping on mobile.
@@ -93,30 +98,19 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   const winnersRef = useRef(winners);
   winnersRef.current = winners;
 
+  const applyWinnersList = useCallback((list: Winner[]) => {
+    const next = mergeWinnersByRecency(list).slice(0, 10);
+    setWinners(next);
+    void saveCachedRecentWinners(next);
+  }, []);
+
   const loadWinnersFromApi = useCallback(async () => {
     try {
-      const rows = await fetchWinners(10);
-      if (!Array.isArray(rows)) return;
-      const fromApi = rows.map((row) =>
-        normalizeWinner(row as Record<string, unknown>)
-      );
+      const fromApi = await fetchWinners(50);
       setWinners((prev) => {
-        const byId = new Map<string, Winner>();
-        for (const w of [...fromApi, ...prev]) {
-          const existing = byId.get(w.id);
-          if (
-            !existing ||
-            new Date(w.won_at).getTime() >= new Date(existing.won_at).getTime()
-          ) {
-            byId.set(w.id, w);
-          }
-        }
-        return [...byId.values()]
-          .sort(
-            (a, b) =>
-              new Date(b.won_at).getTime() - new Date(a.won_at).getTime()
-          )
-          .slice(0, 10);
+        const next = mergeWinnersByRecency(fromApi, prev).slice(0, 10);
+        void saveCachedRecentWinners(next);
+        return next;
       });
     } catch (err) {
       console.warn("Failed to load recent winners:", err);
@@ -386,20 +380,19 @@ const handleEggCracked = useCallback((data: {
 
   const winner = normalizeWinner(data.winner as Record<string, unknown>);
 
-  const isMe = 
-    String(winner.user_id) === String(authUser?.id) || 
-    String(winner.id) === String(authUser?.id) ||
-    (winner.user_name === authUser?.name);
+  const isMe = Boolean(
+    authUser?.id && String(winner.user_id) === String(authUser.id)
+  );
   setCurrentWinner(winner);
   eggCrackedLockRef.current = true;
-  
+
   setWinners((prev) => {
-    const withoutDup = prev.filter((w) => w.id !== winner.id);
-    return [winner, ...withoutDup].slice(0, 10);
+    const next = mergeWinnersByRecency([winner], prev).slice(0, 10);
+    void saveCachedRecentWinners(next);
+    return next;
   });
 
-  void loadWinnersFromApi();
-  setTimeout(() => void loadWinnersFromApi(), 2500);
+  setTimeout(() => void loadWinnersFromApi(), 3000);
 
   if (isMe) {
     if (winner.prize_type === 'coupon') {
@@ -420,16 +413,28 @@ const handleEggCracked = useCallback((data: {
 
   useEffect(() => {
     let cancelled = false;
-    fetchWinners(10)
-      .then((rows) => {
-        if (cancelled || !Array.isArray(rows)) return;
-        setWinners(rows.map((row) => normalizeWinner(row as Record<string, unknown>)));
-      })
-      .catch((err) => console.warn("Failed to load recent winners:", err));
+    (async () => {
+      const cached = await loadCachedRecentWinners();
+      if (!cancelled && cached.length > 0) {
+        applyWinnersList(cached);
+      }
+      try {
+        const fromApi = await fetchWinners(50);
+        if (!cancelled) {
+          setWinners((prev) => {
+            const next = mergeWinnersByRecency(fromApi, prev).slice(0, 10);
+            void saveCachedRecentWinners(next);
+            return next;
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to load recent winners:", err);
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyWinnersList]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -466,36 +471,6 @@ const handleEggCracked = useCallback((data: {
     socket.off("tap_rejected", handleTapRejected);
   };
 }, [socket, handleRemoteEggUpdate, handleEggCracked, handleRoundStart, syncEggRoomState]);
-
-  useEffect(() => {
-    if (!currentEgg || currentEgg.totalTaps <= 0) return;
-
-    const atFullProgress = currentEgg.currentTaps >= currentEgg.totalTaps;
-    if (!atFullProgress) return;
-
-    const finishedRound = !currentEgg.isActive || currentEgg.isCooldown;
-    if (!finishedRound) {
-      syncEggRoomState();
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      if (eggCrackedLockRef.current || showWinModal || showLoseModal) return;
-      setShowLoseModal(true);
-      syncEggRoomState();
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, [
-    currentEgg?.currentTaps,
-    currentEgg?.totalTaps,
-    currentEgg?.isActive,
-    currentEgg?.isCooldown,
-    showWinModal,
-    showLoseModal,
-    syncEggRoomState,
-  ]);
-  
 
   return useMemo(() => ({
     currentEgg,

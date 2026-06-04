@@ -109,12 +109,7 @@ export function EggProvider({ children }: Props) {
     });
   }
 
-  setTimeout(() => {
-    setShowWinModal(false);
-    setShowLoseModal(false);
-  }, 5000); 
-
-}, [selectedEggType, setShowWinModal, setShowLoseModal]);
+}, [selectedEggType]);
 
 
   //--------------------------

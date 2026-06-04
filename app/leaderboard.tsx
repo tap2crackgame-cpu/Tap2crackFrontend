@@ -10,7 +10,7 @@ import BengzFooter from "@/components/BengzFooter";
 
 export default function Tap2CrackLeaderboard() {
   const { authUser: user } = useAuth();
-  const { data: leaderboard = [], isLoading } = useQuery<LeaderboardEntry[]>({
+  const { data: leaderboard = [], isLoading, isError } = useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard'],
     queryFn: () => fetchLeaderboard(50),
     staleTime: 120000,
@@ -18,7 +18,8 @@ export default function Tap2CrackLeaderboard() {
     refetchInterval: 90000,
   });
 
-  const userEntry = leaderboard.find((e) => e.userId === user?.id);
+  const list = Array.isArray(leaderboard) ? leaderboard : [];
+  const userEntry = list.find((e) => e.userId === user?.id);
   const userRank = userEntry?.rank ?? null;
 
   const rankIcon = (rank: number) => {
@@ -63,7 +64,12 @@ export default function Tap2CrackLeaderboard() {
               <ActivityIndicator size="large" color="#FFD700" />
               <Text style={styles.loadingText}>Loading leaderboard...</Text>
             </View>
-          ) : leaderboard.length === 0 ? (
+          ) : isError ? (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>Could not load leaderboard</Text>
+              <Text style={styles.emptySubtitle}>Pull down to refresh or try again shortly.</Text>
+            </View>
+          ) : list.length === 0 ? (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyEmoji}>🥚</Text>
               <Text style={styles.emptyTitle}>No crackers yet!</Text>
@@ -71,7 +77,7 @@ export default function Tap2CrackLeaderboard() {
             </View>
           ) : (
             <View style={styles.list}>
-              {leaderboard.map((entry) => {
+              {list.map((entry) => {
                 const isMe = entry.userId === user?.id;
                 return (
                   <View key={entry.userId} style={[styles.item, entry.rank <= 3 && styles.topItem, isMe && styles.currentUserItem]}>

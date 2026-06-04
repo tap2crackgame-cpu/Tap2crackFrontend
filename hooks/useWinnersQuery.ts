@@ -3,6 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchWinners } from "@/services/fetchleaderboard";
 import { normalizeWinner, type Winner } from "@/types/game";
 import { useSocket } from "@/hooks/SocketContext";
+import {
+  loadCachedRecentWinners,
+  mergeWinnersByRecency,
+  saveCachedRecentWinners,
+} from "@/utils/recentWinnersCache";
 
 export function useWinnersQuery(limit = 50) {
   const socket = useSocket();
@@ -11,14 +16,15 @@ export function useWinnersQuery(limit = 50) {
   const query = useQuery<Winner[]>({
     queryKey: ["winners", limit],
     queryFn: async () => {
-      const rows = await fetchWinners(limit);
-      if (!Array.isArray(rows)) return [];
-      return rows.map((row) =>
-        normalizeWinner(row as Record<string, unknown>)
-      );
+      const fromApi = await fetchWinners(limit);
+      const cached = await loadCachedRecentWinners();
+      const merged = mergeWinnersByRecency(fromApi, cached).slice(0, limit);
+      await saveCachedRecentWinners(merged);
+      return merged;
     },
     staleTime: 15000,
     refetchInterval: 45000,
+    refetchOnMount: "always",
   });
 
   useEffect(() => {
@@ -30,11 +36,14 @@ export function useWinnersQuery(limit = 50) {
       const incoming = normalizeWinner(data.winner);
 
       queryClient.setQueryData<Winner[]>(["winners", limit], (prev = []) => {
-        const withoutDup = prev.filter((w) => w.id !== incoming.id);
-        return [incoming, ...withoutDup].slice(0, limit);
+        const next = mergeWinnersByRecency([incoming], prev).slice(0, limit);
+        void saveCachedRecentWinners(next);
+        return next;
       });
 
-      void queryClient.invalidateQueries({ queryKey: ["winners"] });
+      setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ["winners"] });
+      }, 3000);
     };
 
     socket.on("egg_cracked", onEggCracked);
