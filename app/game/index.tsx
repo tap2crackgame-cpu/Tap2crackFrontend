@@ -10,10 +10,18 @@ import Egg from "@/components/Egg";
 import ProgressBar from "@/components/ProgressBar";
 import PowerUpPanel, { type PowerUpPanelRef } from "@/components/PowerUpPanel";
 import { calculatePowerUpCost, mergePowerUpInventory, formatWinnerPrizeAmount, displayWinnerName, type PowerUpType } from "@/types/game";
+import { useAuth } from "@/context/AuthContext";
+import OnlineUsers from "@/components/OnlineUsers";
+import CooldownTimer from "@/components/CooldownTimer";
+import WinModal from "@/components/WinModal";
+import LoseModal from "@/components/LoseModal";
+import AdModal from "@/components/AdModal";
+import PaymentModal from "@/components/paymentModal";
 import TapFeedback from "@/components/TapFeedback";
 import PowerUpBackground from "@/components/PowerUpBackground";
 import BengzFooter from "@/components/BengzFooter";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
+import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
 const PRIZE_CATEGORIES = [
@@ -249,11 +257,7 @@ export default function Tap2CrackGame() {
     lane: number;
     anim: Animated.Value;
   }>>([]);
-  const baseNames = useRef([
-    "Emeka", "Chinedu", "Ngozi", "Ifeanyi", "Chioma", "Aisha", "Tunde", "Bola",
-    "Seyi", "Kemi", "Nneka", "Obinna", "Amaka", "Uche", "Ibrahim", "Hauwa",
-    "Ade", "Kunle", "Zainab", "Yemi", "Femi", "Sule", "Chisom", "Ada", "John",
-  ]).current;
+  const baseNames = useRef([...BOT_DISPLAY_NAMES]).current;
 
   const spawnPowerUpPopup = useCallback(() => {
     if (!popupsEligible) return;

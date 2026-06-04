@@ -1,3 +1,8 @@
+import {
+  isBotWinnerUserId,
+  resolveBotDisplayName,
+} from "@/constants/botDisplayNames";
+
 export type EggType =
   | "normal"
   | "silver"
@@ -213,15 +218,24 @@ export function normalizeWinner(raw: Record<string, unknown> | null | undefined)
       ? wonAtRaw.toISOString()
       : String(wonAtRaw ?? new Date().toISOString());
 
+  const userId = String(w.user_id ?? w.userId ?? "");
+  const roundKey = String(w.round_id ?? w.roundId ?? w.id ?? "");
+
+  const rawName = String(
+    w.user_name ?? w.username ?? user?.name ?? "Anonymous"
+  );
+
+  const resolvedName = isBotWinnerUserId(userId)
+    ? resolveBotDisplayName(roundKey)
+    : displayWinnerName(rawName);
+
   return {
     id: String(
       w.id ??
-        `win-${w.user_id ?? w.userId ?? "anon"}-${wonAtStr}`
+        `win-${userId || "anon"}-${wonAtStr}`
     ),
-    user_id: String(w.user_id ?? w.userId ?? ""),
-    user_name: displayWinnerName(
-      String(w.user_name ?? w.username ?? user?.name ?? "Anonymous")
-    ),
+    user_id: userId,
+    user_name: resolvedName,
     user_avatar: (w.user_avatar as string | null) ?? user?.avatar ?? null,
     egg_id: String(w.egg_id ?? w.eggId ?? ""),
     egg_type: String(
