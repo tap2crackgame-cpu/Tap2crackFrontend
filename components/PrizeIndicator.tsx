@@ -49,7 +49,7 @@ export default function PrizeIndicator({ prize, eggType }: PrizeIndicatorProps) 
   const config = PRIZE_CONFIGS[prize.type] || PRIZE_CONFIGS.sponsor;
   const eggConfig = EGG_TYPE_CONFIGS[eggType];
   const maskedValue =
-    prize.type === "airtime"
+    prize.type === "airtime" || prize.type === "coupon"
       ? "******"
       : `₦${prize.value.toLocaleString()}`;
 

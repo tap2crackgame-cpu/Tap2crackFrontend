@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Trophy, Share2, Sparkles } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
 import { useWinnersQuery } from "@/hooks/useWinnersQuery";
-import { Winner, formatWinnerPrizeLabel } from "@/types/game";
+import { Winner, formatWinnerPrizeLabel, formatWinnerPrizeAmount, displayWinnerName } from "@/types/game";
 
 const ICONS: Record<string, string> = {
   airtime: "\u{1F4F1}",
@@ -94,7 +94,7 @@ export default function Tap2CrackWinners() {
                       <Text style={styles.avatarText}>{(w.user_name || '?')[0]?.toUpperCase()}</Text>
                     </View>
                     <View style={styles.info}>
-                      <Text style={styles.name}>{w.user_name}</Text>
+                      <Text style={styles.name}>{displayWinnerName(w.user_name)}</Text>
                       <View style={styles.prizeRow}>
                         <Text style={styles.prizeIcon}>{ICONS[w.prize_type] || "\u{1F381}"}</Text>
                         <View style={styles.prizeTextWrap}>
@@ -102,12 +102,13 @@ export default function Tap2CrackWinners() {
                             {w.prize_type === "coupon" && w.company_name
                               ? w.company_name
                               : w.prize_description}
+                            {formatWinnerPrizeAmount(w)
+                              ? ` · ${formatWinnerPrizeAmount(w)}`
+                              : ""}
                           </Text>
-                          {w.prize_type === "coupon" && (
+                          {w.prize_type === "coupon" && w.company_name && (
                             <Text style={styles.prizeSubtext}>
-                              {[w.company_name ? w.prize_description : null, w.prize_code ? `Code: ${w.prize_code}` : null]
-                                .filter(Boolean)
-                                .join(" · ")}
+                              {w.prize_description}
                             </Text>
                           )}
                         </View>

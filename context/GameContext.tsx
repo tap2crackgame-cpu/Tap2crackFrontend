@@ -18,7 +18,7 @@ import {
   normalizeWinner,
 } from '@/types/game';
 import { fetchWinners } from '@/services/fetchleaderboard';
-import { playGameSound } from '@/utils/sounds';
+import { playGameSound, playCrackMilestones } from '@/utils/sounds';
 
 
 // Keep client limits close to backend limits for smoother tapping on mobile.
@@ -97,9 +97,27 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     try {
       const rows = await fetchWinners(10);
       if (!Array.isArray(rows)) return;
-      setWinners(
-        rows.map((row) => normalizeWinner(row as Record<string, unknown>))
+      const fromApi = rows.map((row) =>
+        normalizeWinner(row as Record<string, unknown>)
       );
+      setWinners((prev) => {
+        const byId = new Map<string, Winner>();
+        for (const w of [...fromApi, ...prev]) {
+          const existing = byId.get(w.id);
+          if (
+            !existing ||
+            new Date(w.won_at).getTime() >= new Date(existing.won_at).getTime()
+          ) {
+            byId.set(w.id, w);
+          }
+        }
+        return [...byId.values()]
+          .sort(
+            (a, b) =>
+              new Date(b.won_at).getTime() - new Date(a.won_at).getTime()
+          )
+          .slice(0, 10);
+      });
     } catch (err) {
       console.warn("Failed to load recent winners:", err);
     }
@@ -111,6 +129,8 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
  
   const lastActivityUpdateRef = useRef(0);
   const eggCrackedLockRef = useRef(false);
+  const crackSoundRoundRef = useRef<string | null>(null);
+  const crackMilestonesPlayedRef = useRef<Set<number>>(new Set());
  
 
    useEffect(() => {
@@ -184,13 +204,44 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   
     otherPlayersTapsRef.current = 0;
     eggCrackedLockRef.current = false;
+    crackSoundRoundRef.current = null;
+    crackMilestonesPlayedRef.current = new Set();
   }, []);
 
   const handleRoundStart = useCallback((data: { round: DbRound }) => {
+    crackSoundRoundRef.current = null;
+    crackMilestonesPlayedRef.current = new Set();
     if (data?.round) {
      applyRoundToState(data.round);
     }
   }, [applyRoundToState]);
+
+  useEffect(() => {
+    if (!currentEgg?.roundId || currentEgg.isCooldown) return;
+    if (currentEgg.isActive === false && currentEgg.currentTaps >= currentEgg.totalTaps) {
+      return;
+    }
+
+    const total = Number(currentEgg.totalTaps ?? 0);
+    const current = Number(currentEgg.currentTaps ?? 0);
+    if (total <= 0 || current <= 0) return;
+
+    if (crackSoundRoundRef.current !== currentEgg.roundId) {
+      crackSoundRoundRef.current = currentEgg.roundId;
+      crackMilestonesPlayedRef.current = new Set();
+    }
+
+    const progressPct = (current / total) * 100;
+    if (progressPct >= 100) return;
+
+    playCrackMilestones(progressPct, crackMilestonesPlayedRef.current);
+  }, [
+    currentEgg?.roundId,
+    currentEgg?.currentTaps,
+    currentEgg?.totalTaps,
+    currentEgg?.isActive,
+    currentEgg?.isCooldown,
+  ]);
 
 
   /*=======REMOTE TAP (egg_update — eggContext already syncs progress)=======*/
@@ -319,8 +370,6 @@ const handleEggCracked = useCallback((data: {
   antiStreakBlocked?: boolean;
   blockedTapperId?: string;
 }) => {
-  void playGameSound('eggCrack');
-
   if (data.antiStreakBlocked) {
     eggCrackedLockRef.current = true;
     setShowWinModal(false);
@@ -350,6 +399,7 @@ const handleEggCracked = useCallback((data: {
   });
 
   void loadWinnersFromApi();
+  setTimeout(() => void loadWinnersFromApi(), 2500);
 
   if (isMe) {
     if (winner.prize_type === 'coupon') {

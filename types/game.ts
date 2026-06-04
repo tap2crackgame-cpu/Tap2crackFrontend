@@ -169,11 +169,37 @@ export function formatWinnerPrizeLabel(w: {
     return parts.join(' · ') || 'Coupon';
   }
 
+  if (w.prize_type === 'airtime') {
+    return `${w.prize_description || 'Airtime'} · ******`;
+  }
+
   const value =
     w.prize_value && Number(w.prize_value) > 0
       ? ` · ₦${Number(w.prize_value).toLocaleString()}`
       : '';
   return `${w.prize_description || 'Prize'}${value}`;
+}
+
+/** Strip legacy masked suffixes from display names (e.g. Chidi*** → Chidi). */
+export function displayWinnerName(name?: string | null): string {
+  const cleaned = String(name ?? "Anonymous")
+    .replace(/\*+/g, "")
+    .trim();
+  return cleaned || "Anonymous";
+}
+
+/** Mask sensitive prize amounts in winner lists. */
+export function formatWinnerPrizeAmount(w: {
+  prize_type?: string;
+  prize_value?: number;
+}): string {
+  if (w.prize_type === 'airtime' || w.prize_type === 'coupon') {
+    return '******';
+  }
+  if (w.prize_value && Number(w.prize_value) > 0) {
+    return `₦${Number(w.prize_value).toLocaleString()}`;
+  }
+  return '';
 }
 
 /** Normalize API/socket winner payloads to a consistent Winner shape. */
@@ -193,8 +219,8 @@ export function normalizeWinner(raw: Record<string, unknown> | null | undefined)
         `win-${w.user_id ?? w.userId ?? "anon"}-${wonAtStr}`
     ),
     user_id: String(w.user_id ?? w.userId ?? ""),
-    user_name: String(
-      w.user_name ?? w.username ?? user?.name ?? "Anonymous"
+    user_name: displayWinnerName(
+      String(w.user_name ?? w.username ?? user?.name ?? "Anonymous")
     ),
     user_avatar: (w.user_avatar as string | null) ?? user?.avatar ?? null,
     egg_id: String(w.egg_id ?? w.eggId ?? ""),

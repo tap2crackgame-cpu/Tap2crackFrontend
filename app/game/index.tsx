@@ -9,15 +9,7 @@ import { useCurrentEggViewModel } from "@/hooks/eggSelector";
 import Egg from "@/components/Egg";
 import ProgressBar from "@/components/ProgressBar";
 import PowerUpPanel, { type PowerUpPanelRef } from "@/components/PowerUpPanel";
-import { calculatePowerUpCost, mergePowerUpInventory } from "@/types/game";
-import { useAuth } from "@/context/AuthContext";
-import OnlineUsers from "@/components/OnlineUsers";
-import CooldownTimer from "@/components/CooldownTimer";
-import WinModal from "@/components/WinModal";
-import LoseModal from "@/components/LoseModal";
-import AdModal from "@/components/AdModal";
-import PaymentModal from "@/components/paymentModal";
-import { PowerUpType } from "@/types/game";
+import { calculatePowerUpCost, mergePowerUpInventory, formatWinnerPrizeAmount, displayWinnerName, type PowerUpType } from "@/types/game";
 import TapFeedback from "@/components/TapFeedback";
 import PowerUpBackground from "@/components/PowerUpBackground";
 import BengzFooter from "@/components/BengzFooter";
@@ -550,14 +542,22 @@ export default function Tap2CrackGame() {
         >
           <View style={[styles.gameMainColumn, { maxWidth: contentMax, width: isWideWeb ? contentMax : "100%" }]}>
           {currentEgg && currentEgg.egg.type === 'normal' && (
-            <View style={styles.prizeTypeBadge}>
-              <Text style={styles.prizeTypeIcon}>{getPrizeIcon()}</Text>
-              <Text style={styles.prizeTypeText}>
-                Win {currentEgg.prize.type === 'airtime' ? 'Airtime' : 
-                     currentEgg.prize.type === 'coupon' ? 'Coupon' : 
-                     currentEgg.prize.type === 'cash' ? 'Cash' : 'Prize'}
-              </Text>
-            </View>
+            <>
+              <View style={styles.prizeTypeBadge}>
+                <Text style={styles.prizeTypeIcon}>{getPrizeIcon()}</Text>
+                <Text style={styles.prizeTypeText}>
+                  Win {currentEgg.prize.type === 'airtime' ? 'Airtime' : 
+                       currentEgg.prize.type === 'coupon' ? 'Coupon' : 
+                       currentEgg.prize.type === 'cash' ? 'Cash' : 'Prize'}
+                </Text>
+              </View>
+              <View style={styles.prizeIndicatorContainer}>
+                <PrizeIndicator 
+                  prize={currentEgg.prize} 
+                  eggType={currentEgg.egg.type} 
+                />
+              </View>
+            </>
           )}
 
           {currentEgg && currentEgg.egg.type !== 'normal' && (
@@ -569,15 +569,6 @@ export default function Tap2CrackGame() {
 
           {currentEgg && (
             <>
-              {currentEgg.egg.type === 'normal' && (
-                <View style={styles.prizeIndicatorContainer}>
-                  <PrizeIndicator 
-                    prize={currentEgg.prize} 
-                    eggType={currentEgg.egg.type} 
-                  />
-                </View>
-              )}
-              
               <View style={[styles.eggStage, { width: stageWidth }]}>
                 {powerUpPopups.length > 0 && (
                   <View pointerEvents="none" style={styles.powerUpPopupsLayer}>
@@ -643,48 +634,6 @@ export default function Tap2CrackGame() {
     </Text>
   )}
 </View>
-
-          {Array.isArray(winners) && winners.length > 0 && (
-            <View style={[styles.winnersSection, { paddingHorizontal: padH }]}>
-              <Text style={styles.sectionTitle}>Recent Winners</Text>
-              {winners.slice(0, 3).map((winner, index) => (
-                <View key={winner.id} style={styles.winnerCard}>
-                  <Text style={styles.winnerRank}>#{index + 1}</Text>
-                  <View style={styles.winnerAvatar}>
-                    <Text style={styles.winnerInitial}>
-                      {winner.user_name?.[0]?.toUpperCase() || "?"}
-                    </Text>
-                  </View>
-                  <View style={styles.winnerDetails}>
-                    <Text style={styles.winnerName}>
-                      {winner.user_name || "Anonymous"}
-                    </Text>
-                    <Text style={styles.winnerPrize}>
-                      {winner.prize_type === "coupon" && winner.company_name
-                        ? winner.company_name
-                        : winner.prize_description}
-                      {winner.prize_type !== "coupon" && winner.prize_value
-                        ? ` · ₦${Number(winner.prize_value).toLocaleString()}`
-                        : ""}
-                    </Text>
-                    {winner.prize_type === "coupon" && winner.company_name && (
-                      <Text style={styles.winnerPrizeSub}>
-                        {winner.prize_description}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={styles.winnerTime}>
-                    {winner.won_at
-                      ? new Date(winner.won_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "--"}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
 
           {onlineUsers > 1 && (
             <View style={[styles.liveIndicator, { marginHorizontal: padH }]}>
@@ -817,6 +766,48 @@ export default function Tap2CrackGame() {
               ))}
             </View>
           </View>
+
+          {Array.isArray(winners) && winners.length > 0 && (
+            <View style={[styles.winnersSection, { paddingHorizontal: padH }]}>
+              <Text style={styles.sectionTitle}>Recent Winners</Text>
+              {winners.slice(0, 3).map((winner, index) => (
+                <View key={winner.id} style={styles.winnerCard}>
+                  <Text style={styles.winnerRank}>#{index + 1}</Text>
+                  <View style={styles.winnerAvatar}>
+                    <Text style={styles.winnerInitial}>
+                      {winner.user_name?.[0]?.toUpperCase() || "?"}
+                    </Text>
+                  </View>
+                  <View style={styles.winnerDetails}>
+                    <Text style={styles.winnerName}>
+                      {displayWinnerName(winner.user_name)}
+                    </Text>
+                    <Text style={styles.winnerPrize}>
+                      {winner.prize_type === "coupon" && winner.company_name
+                        ? winner.company_name
+                        : winner.prize_description}
+                      {formatWinnerPrizeAmount(winner)
+                        ? ` · ${formatWinnerPrizeAmount(winner)}`
+                        : ""}
+                    </Text>
+                    {winner.prize_type === "coupon" && winner.company_name && (
+                      <Text style={styles.winnerPrizeSub}>
+                        {winner.prize_description}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.winnerTime}>
+                    {winner.won_at
+                      ? new Date(winner.won_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "--"}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <BengzFooter />
           </View>
