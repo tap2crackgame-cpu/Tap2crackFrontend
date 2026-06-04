@@ -76,6 +76,8 @@ export default function Tap2CrackGame() {
     adRewardGrantedUI,
     dismissAdModal,
     isStartingAds,
+    adTimerActive,
+    adPhase,
     activatingPowerUp,
     currentWinner, 
     activePowerUp, 
@@ -844,6 +846,8 @@ export default function Tap2CrackGame() {
           currentAd={adCurrent}
           rewardGranted={adRewardGrantedUI}
           onDismissReward={dismissAdModal}
+          timerActive={adTimerActive}
+          adPhase={adPhase}
         />
         {token && paymentPayload && (
           <PaymentModal

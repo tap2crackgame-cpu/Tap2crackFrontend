@@ -15,7 +15,7 @@ export default function useUserProfile(options?: { refreshOnFocus?: boolean }) {
   useFocusEffect(
     useCallback(() => {
       if (!token || !refreshOnFocus) return;
-      refreshProfile(false);
+      refreshProfile(true);
     }, [token, refreshOnFocus, refreshProfile])
   );
 

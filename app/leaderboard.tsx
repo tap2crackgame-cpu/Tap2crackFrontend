@@ -1,15 +1,24 @@
+import { useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, SafeAreaView, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Trophy, Crown, Medal, Egg } from "lucide-react-native";
+import { useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { LeaderboardEntry } from "@/types/game";
 import { fetchLeaderboard } from "@/services/fetchleaderboard";
 import { EGG_RANKS } from "@/types/game";
 import BengzFooter from "@/components/BengzFooter";
+import { resolveUserStats, formatStat } from "@/utils/userStats";
 
 export default function Tap2CrackLeaderboard() {
-  const { authUser: user } = useAuth();
+  const { authUser: user, token, refreshProfile } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (token) void refreshProfile(true);
+    }, [token, refreshProfile])
+  );
   const { data: leaderboard = [], isLoading, isError } = useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard'],
     queryFn: () => fetchLeaderboard(50),
@@ -19,8 +28,12 @@ export default function Tap2CrackLeaderboard() {
   });
 
   const list = Array.isArray(leaderboard) ? leaderboard : [];
-  const userEntry = list.find((e) => e.userId === user?.id);
+  const myId = user?.id != null ? String(user.id) : "";
+  const userEntry = list.find((e) => String(e.userId) === myId);
   const userRank = userEntry?.rank ?? null;
+  const profileStats = resolveUserStats(user);
+  const weeklyCount = userEntry?.weeklyEggsCracked ?? profileStats.weeklyEggsCracked;
+  const totalCount = userEntry?.eggsCracked ?? profileStats.eggsCracked;
 
   const rankIcon = (rank: number) => {
     if (rank === 1) return <Crown size={20} color="#FFD700" />;
@@ -47,12 +60,12 @@ export default function Tap2CrackLeaderboard() {
               <View style={styles.statsFlex}>
                 <View style={styles.statItem}>
                   <Egg size={20} color="#FFD700" />
-                  <Text style={styles.statNum}>{userEntry?.weeklyEggsCracked ?? "0"}</Text>
+                  <Text style={styles.statNum}>{formatStat(weeklyCount)}</Text>
                   <Text style={styles.statLabel}>Weekly</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Trophy size={20} color="#4ECDC4" />
-                  <Text style={styles.statNum}>{userEntry?.eggsCracked ?? "0"}</Text>
+                  <Text style={styles.statNum}>{formatStat(totalCount)}</Text>
                   <Text style={styles.statLabel}>Total</Text>
                 </View>
               </View>

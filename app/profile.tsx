@@ -12,6 +12,7 @@ import  userUserProfile  from "@/app/useProfile";
 import { useUserPrizes } from "./usePrizes";
 import { type DbWinner, getUserSettlementLabel, isPrizeSettled } from "@/types/game";
 import { AUTH_API } from "@/utils/api";
+import { resolveUserStats, formatStat } from "@/utils/userStats";
 import { useGoogleAuth } from "@/hooks/googleLogin";
 
 const PUNS = [
@@ -81,6 +82,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
   }
 
   const pun = PUNS[Math.floor(Math.random() * PUNS.length)];
+  const stats = resolveUserStats(user);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -126,9 +128,9 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
               </TouchableOpacity>
             )}
 
-            <View style={[styles.rankBadge, { borderColor: getRankColor(user?.stats?.rank) }]}>
-              <Award size={14} color={getRankColor(user?.stats?.rank )} />
-              <Text style={[styles.rankText, { color: getRankColor(user?.stats?.rank) }]}>{user?.stats?.rank || "Egg Novice"}</Text>
+            <View style={[styles.rankBadge, { borderColor: getRankColor(stats.rank) }]}>
+              <Award size={14} color={getRankColor(stats.rank)} />
+              <Text style={[styles.rankText, { color: getRankColor(stats.rank) }]}>{stats.rank || "Egg Novice"}</Text>
             </View>
             <Text style={styles.pun}>{pun}</Text>
 
@@ -157,7 +159,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
                   activeOpacity={0.85}
                 >
                   <Egg size={20} color="#FFD700" />
-                  <Text style={styles.statVal}>{user?.stats?.eggsCracked}</Text>
+                  <Text style={styles.statVal}>{formatStat(stats.eggsCracked)}</Text>
                   <Text style={styles.statLbl}>Cracked</Text>
                   <Text style={styles.statHint}>Tap for prizes</Text>
                   <ChevronRight size={14} color="rgba(255,215,0,0.5)" style={styles.statChevron} />
@@ -165,18 +167,18 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
               ) : (
                 <View style={styles.statCard}>
                   <Egg size={20} color="#FFD700" />
-                  <Text style={styles.statVal}>{user?.stats?.eggsCracked}</Text>
+                  <Text style={styles.statVal}>{formatStat(stats.eggsCracked)}</Text>
                   <Text style={styles.statLbl}>Cracked</Text>
                 </View>
               )}
               <View style={styles.statCard}>
                 <Trophy size={20} color="#FF6B6B" />
-                <Text style={styles.statVal}>{user?.stats?.wins}</Text>
+                <Text style={styles.statVal}>{formatStat(stats.wins)}</Text>
                 <Text style={styles.statLbl}>Wins</Text>
               </View>
               <View style={styles.statCard}>
                 <Trophy size={20} color="#4ECDC4" />
-                <Text style={styles.statVal}>{user?.stats?.weeklyEggsCracked}</Text>
+                <Text style={styles.statVal}>{formatStat(stats.weeklyEggsCracked)}</Text>
                 <Text style={styles.statLbl}>Weekly</Text>
               </View>
             </View>
@@ -370,7 +372,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Total Taps</Text>
             <View style={styles.tapsCard}>
-              <Text style={styles.tapsValue}>{user?.stats?.totalTaps.toLocaleString()}</Text>
+              <Text style={styles.tapsValue}>{stats.totalTaps.toLocaleString()}</Text>
               <Text style={styles.tapsLabel}>lifetime taps</Text>
             </View>
           </View>

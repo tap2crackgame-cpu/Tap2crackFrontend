@@ -1,21 +1,39 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Coffee, Heart, ExternalLink } from "lucide-react-native";
+import { Coffee, Heart } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/context/ToastContext";
+import CoffeeQuantityModal from "@/components/CoffeeQuantityModal";
+import CoffeePaymentModal from "@/components/CoffeePaymentModal";
 
-const COFFEE_URL = "https://buymeacoffee.com/tap2crack";
 const SUPPORT_EMAIL = "tap2crackgame@gmail.com";
 
 export default function BuyCoffeePage() {
+  const { token } = useAuth();
+  const [qtyModalOpen, setQtyModalOpen] = useState(false);
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [coffeeQty, setCoffeeQty] = useState(1);
+
   const handleBuyCoffee = useCallback(() => {
-    Linking.openURL(COFFEE_URL).catch(() => {
-      Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Tap2Crack%20Support&body=Hi%2C%20I%27d%20like%20to%20support%20Tap2Crack!`);
-    });
+    if (!token) {
+      toast.error("Sign in to buy us a coffee");
+      return;
+    }
+    setQtyModalOpen(true);
+  }, [token]);
+
+  const handleQuantityContinue = useCallback((quantity: number) => {
+    setCoffeeQty(quantity);
+    setQtyModalOpen(false);
+    setPayModalOpen(true);
   }, []);
 
   const handleEmail = useCallback(() => {
-    Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Tap2Crack%20Support&body=Hi%2C%20I%27d%20like%20to%20support%20Tap2Crack!`);
+    Linking.openURL(
+      `mailto:${SUPPORT_EMAIL}?subject=Tap2Crack%20Support&body=Hi%2C%20I%27d%20like%20to%20support%20Tap2Crack!`
+    );
   }, []);
 
   return (
@@ -36,7 +54,8 @@ export default function BuyCoffeePage() {
         <View style={styles.card}>
           <Heart size={20} color="#FF6B6B" />
           <Text style={styles.cardText}>
-            Tap2Crack is built with love. Your support helps us keep the servers running, add new features, and create bigger prizes for the community.
+            Tap2Crack is built with love. Your support helps us keep the servers running, add new
+            features, and create bigger prizes for the community.
           </Text>
         </View>
 
@@ -49,10 +68,11 @@ export default function BuyCoffeePage() {
           <Text style={styles.bulletItem}>🌍  Growing the community</Text>
         </View>
 
+        <Text style={styles.priceHint}>₦50 per coffee · pay via bank transfer (Flutterwave)</Text>
+
         <TouchableOpacity style={styles.coffeeBtn} onPress={handleBuyCoffee} activeOpacity={0.8}>
           <Coffee size={20} color="#1a1a2e" />
           <Text style={styles.coffeeBtnText}>Buy Us a Coffee</Text>
-          <ExternalLink size={16} color="#1a1a2e" />
         </TouchableOpacity>
 
         <Text style={styles.orText}>or send us some love directly</Text>
@@ -61,10 +81,27 @@ export default function BuyCoffeePage() {
           <Text style={styles.emailBtnText}>📧  {SUPPORT_EMAIL}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.thanks}>Every little bit counts. Thank you for being part of the Tap2Crack family! 🙏</Text>
+        <Text style={styles.thanks}>
+          Every little bit counts. Thank you for being part of the Tap2Crack family! 🙏
+        </Text>
 
         <BengzFooter />
       </ScrollView>
+
+      <CoffeeQuantityModal
+        visible={qtyModalOpen}
+        onClose={() => setQtyModalOpen(false)}
+        onContinue={handleQuantityContinue}
+      />
+
+      {token ? (
+        <CoffeePaymentModal
+          visible={payModalOpen}
+          quantity={coffeeQty}
+          token={token}
+          onClose={() => setPayModalOpen(false)}
+        />
+      ) : null}
     </LinearGradient>
   );
 }
@@ -145,6 +182,12 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     paddingVertical: 3,
   },
+  priceHint: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.45)",
+    marginBottom: 8,
+    textAlign: "center",
+  },
   coffeeBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -155,7 +198,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 16,
     width: "100%",
-    marginTop: 12,
+    marginTop: 4,
   },
   coffeeBtnText: {
     fontSize: 17,

@@ -1,6 +1,9 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
+import { saveCachedProfile } from '@/utils/cache';
+import type { UserStats } from '@/types/game';
 import { useSocket } from '@/hooks/SocketContext';
 import { useEgg } from './eggContext';
 import { usePowerUp } from '@/hooks/usePowerUps';
@@ -43,8 +46,9 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     setShowLoseModal,
     syncEggRoomState,
   } = useEgg();
-  const { authUser, refreshProfile } = useAuth();
-  const  socket  = useSocket();
+  const { authUser, refreshProfile, setAuthUser } = useAuth();
+  const socket = useSocket();
+  const queryClient = useQueryClient();
   const userId = authUser?.id;
   const currentEgg = eggs[selectedEggType];
 
@@ -70,6 +74,7 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   const gameStateRef = useRef(gameState);
   const lastTapRef = useRef(0);
   const pendingTapsRef = useRef(0);
+  const modalAutoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     startAds,
     isWatching,
@@ -82,6 +87,8 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     rewardGrantedUI,
     dismissAdModal,
     isStartingAds,
+    adTimerActive,
+    adPhase,
   } = useAds();
   const socketRef = useRef(socket);
 
@@ -358,6 +365,19 @@ const handleTap = useCallback(() => {
 }, [activePowerUp, flushTapBatch, syncEggRoomState]);
 
 
+const MODAL_AUTO_CLOSE_MS = 3000;
+
+const scheduleModalAutoClose = useCallback(() => {
+  if (modalAutoCloseRef.current) {
+    clearTimeout(modalAutoCloseRef.current);
+  }
+  modalAutoCloseRef.current = setTimeout(() => {
+    modalAutoCloseRef.current = null;
+    setShowWinModal(false);
+    setShowLoseModal(false);
+  }, MODAL_AUTO_CLOSE_MS);
+}, [setShowWinModal, setShowLoseModal]);
+
 /*=======Handle Egg Cracked=======*/
 const handleEggCracked = useCallback((data: {
   winner: Winner | null;
@@ -368,6 +388,7 @@ const handleEggCracked = useCallback((data: {
     eggCrackedLockRef.current = true;
     setShowWinModal(false);
     setShowLoseModal(true);
+    scheduleModalAutoClose();
     return;
   }
 
@@ -375,6 +396,7 @@ const handleEggCracked = useCallback((data: {
     eggCrackedLockRef.current = true;
     setShowLoseModal(true);
     setShowWinModal(false);
+    scheduleModalAutoClose();
     return;
   }
 
@@ -401,13 +423,31 @@ const handleEggCracked = useCallback((data: {
       void playGameSound('airtimeWin');
     }
     void refreshProfile(true);
+    setTimeout(() => void refreshProfile(true), 2000);
+    setTimeout(() => void refreshProfile(true), 5000);
     setShowWinModal(true);
     setShowLoseModal(false);
   } else {
     setShowLoseModal(true);
-    setShowWinModal(false); 
+    setShowWinModal(false);
   }
-}, [authUser, setShowWinModal, setShowLoseModal, loadWinnersFromApi, refreshProfile]); 
+  scheduleModalAutoClose();
+}, [
+  authUser,
+  setShowWinModal,
+  setShowLoseModal,
+  loadWinnersFromApi,
+  refreshProfile,
+  scheduleModalAutoClose,
+]);
+
+  useEffect(() => {
+    return () => {
+      if (modalAutoCloseRef.current) {
+        clearTimeout(modalAutoCloseRef.current);
+      }
+    };
+  }, []); 
 
   /*========Socket Handlers========*/
 
@@ -442,6 +482,26 @@ const handleEggCracked = useCallback((data: {
     }, 60000);
     return () => clearInterval(interval);
   }, [loadWinnersFromApi]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onStatsUpdated = (payload: { stats?: UserStats }) => {
+      if (!payload?.stats) return;
+      setAuthUser((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, stats: payload.stats as UserStats };
+        void saveCachedProfile(next);
+        return next;
+      });
+      void queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+    };
+
+    socket.on('stats_updated', onStatsUpdated);
+    return () => {
+      socket.off('stats_updated', onStatsUpdated);
+    };
+  }, [socket, setAuthUser, queryClient]);
 
   useEffect(() => {
   if (!socket) return;
@@ -489,6 +549,8 @@ const handleEggCracked = useCallback((data: {
     adRewardGrantedUI: rewardGrantedUI,
     dismissAdModal,
     isStartingAds,
+    adTimerActive,
+    adPhase,
     activatingPowerUp,
     isPaymentLoading,
     powerUpUsedThisRound,
@@ -517,6 +579,8 @@ const handleEggCracked = useCallback((data: {
     rewardGrantedUI,
     dismissAdModal,
     isStartingAds,
+    adTimerActive,
+    adPhase,
     adStep,
     adTimeLeft,
     adDuration,

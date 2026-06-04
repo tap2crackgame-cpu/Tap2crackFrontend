@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Platform } from "react-native";
 import { showAlertAsToast } from "@/context/ToastContext";
 import { useSocket } from "./SocketContext";
 import type { PromoAd } from "@/services/ads";
+import { preloadPromoAdMedia } from "@/utils/preloadAdMedia";
 
-type AdStep = 0 | 1 | 2;
+type AdStep = 1 | 2;
+type AdPhase = "idle" | "loading" | "playing" | "reward";
+
+const DEFAULT_DURATION = 30;
 
 const AD_REJECT_MESSAGES: Record<string, string> = {
   ROUND_ENDED: "This round has ended.",
@@ -16,25 +19,31 @@ const AD_REJECT_MESSAGES: Record<string, string> = {
   NO_ADS_AVAILABLE: "No active Ads",
 };
 
+function clampDuration(seconds?: number) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n)) return DEFAULT_DURATION;
+  return Math.max(5, Math.min(30, Math.round(n)));
+}
+
 export function useAds() {
   const socket = useSocket();
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [step, setStep] = useState<AdStep>(0);
-  const [isWatching, setIsWatching] = useState(false);
+  const [phase, setPhase] = useState<AdPhase>("idle");
+  const [step, setStep] = useState<AdStep>(1);
   const [timeLeft, setTimeLeft] = useState(0);
   const [currentAd, setCurrentAd] = useState<PromoAd | null>(null);
   const [totalSteps, setTotalSteps] = useState(2);
-  const [rewardGranted, setRewardGranted] = useState(false);
-  const [rewardGrantedUI, setRewardGrantedUI] = useState(false);
-  const [currentDuration, setCurrentDuration] = useState(30);
+  const [stepDuration, setStepDuration] = useState(DEFAULT_DURATION);
   const [isStartingAds, setIsStartingAds] = useState(false);
 
+  const sessionRef = useRef<string | null>(null);
+  const stepRef = useRef<AdStep>(1);
+  const durationRef = useRef(DEFAULT_DURATION);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sessionRef = useRef<string | null>(null);
-  const stepRef = useRef<AdStep>(0);
-  const stepCompletedRef = useRef(false);
-  const currentDurationRef = useRef(30);
+  const nextAdRef = useRef<PromoAd | null>(null);
+  const waitingForAdNextRef = useRef(false);
+  const phaseRef = useRef<AdPhase>("idle");
+  phaseRef.current = phase;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -45,17 +54,17 @@ export function useAds() {
 
   const resetSession = useCallback(() => {
     clearTimer();
-    setSessionId(null);
     sessionRef.current = null;
-    setStep(0);
-    stepRef.current = 0;
-    setIsWatching(false);
+    nextAdRef.current = null;
+    waitingForAdNextRef.current = false;
+    stepRef.current = 1;
+    durationRef.current = DEFAULT_DURATION;
+    setPhase("idle");
+    setStep(1);
     setTimeLeft(0);
     setCurrentAd(null);
-    setCurrentDuration(30);
-    currentDurationRef.current = 30;
-    stepCompletedRef.current = false;
-    setRewardGrantedUI(false);
+    setStepDuration(DEFAULT_DURATION);
+    setIsStartingAds(false);
   }, [clearTimer]);
 
   const dismissAdModal = useCallback(() => {
@@ -70,37 +79,42 @@ export function useAds() {
     setIsStartingAds(false);
   }, []);
 
-  const emitAdProgress = useCallback(() => {
-    socket?.emit("ads_progress", {
-      sessionId: sessionRef.current,
-      durationSeconds: currentDurationRef.current,
-    });
-  }, [socket]);
+  const emitStepComplete = useCallback(
+    (completedStep: AdStep) => {
+      if (!socket || !sessionRef.current) return;
+      socket.emit("ads_progress", {
+        sessionId: sessionRef.current,
+        completedStep,
+        durationSeconds: durationRef.current,
+      });
+    },
+    [socket]
+  );
 
-  const startCountdown = useCallback(
-    (duration: number, adStep: AdStep) => {
-      setTimeLeft(duration);
-      stepCompletedRef.current = false;
-      stepRef.current = adStep;
+  const startStepTimer = useCallback(
+    (adStep: AdStep, duration: number) => {
       clearTimer();
+      const secs = clampDuration(duration);
+      durationRef.current = secs;
+      stepRef.current = adStep;
+      setStep(adStep);
+      setStepDuration(secs);
+      setTimeLeft(secs);
+      setPhase("playing");
 
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
-          if (
-            stepRef.current === 2 &&
-            prev === 3 &&
-            !stepCompletedRef.current
-          ) {
-            stepCompletedRef.current = true;
-            emitAdProgress();
-            return 3;
-          }
-
           if (prev <= 1) {
             clearTimer();
-            if (!stepCompletedRef.current) {
-              stepCompletedRef.current = true;
-              emitAdProgress();
+            setTimeLeft(0);
+
+            if (stepRef.current === 1) {
+              waitingForAdNextRef.current = true;
+              setPhase("loading");
+              emitStepComplete(1);
+            } else if (stepRef.current === 2) {
+              setPhase("loading");
+              emitStepComplete(2);
             }
             return 0;
           }
@@ -108,119 +122,82 @@ export function useAds() {
         });
       }, 1000);
     },
-    [clearTimer, emitAdProgress]
+    [clearTimer, emitStepComplete]
   );
 
-  const resolveAdDuration = useCallback(
-    async (ad: PromoAd | null | undefined, fallback: number) => {
-      const normalizedFallback = Number.isFinite(fallback)
-        ? Math.max(5, Math.min(30, Math.round(fallback)))
-        : 30;
-      if (!ad || ad.mediaType !== "video" || Platform.OS !== "web") {
-        return normalizedFallback;
+  const playStep = useCallback(
+    (adStep: AdStep, ad: PromoAd | null, duration?: number) => {
+      if (!ad) {
+        setPhase("loading");
+        return;
       }
-
-      try {
-        const duration = await new Promise<number>((resolve) => {
-          const v = document.createElement("video");
-          let done = false;
-          const finish = (value: number) => {
-            if (done) return;
-            done = true;
-            resolve(value);
-          };
-
-          const timeout = window.setTimeout(
-            () => finish(normalizedFallback),
-            6000
-          );
-          v.preload = "metadata";
-          v.muted = true;
-          v.src = ad.mediaUrl;
-          v.onloadedmetadata = () => {
-            window.clearTimeout(timeout);
-            const d = Number.isFinite(v.duration)
-              ? Math.ceil(v.duration)
-              : normalizedFallback;
-            finish(Math.max(5, Math.min(30, d)));
-          };
-          v.onerror = () => {
-            window.clearTimeout(timeout);
-            finish(normalizedFallback);
-          };
-        });
-
-        return duration;
-      } catch {
-        return normalizedFallback;
-      }
+      const secs = clampDuration(duration);
+      setCurrentAd(ad);
+      void preloadPromoAdMedia(ad);
+      startStepTimer(adStep, secs);
     },
-    []
+    [startStepTimer]
   );
 
-  const beginStep = useCallback(
+  const handleSessionStart = useCallback(
     (data: {
       sessionId: string;
       step: number;
       duration?: number;
       totalSteps?: number;
       ad?: PromoAd | null;
+      nextAd?: PromoAd | null;
     }) => {
       sessionRef.current = data.sessionId;
-      setSessionId(data.sessionId);
-      const nextStep = data.step as AdStep;
-      setStep(nextStep);
-      stepRef.current = nextStep;
-      setIsWatching(true);
-      setRewardGrantedUI(false);
-      clearStartLoading();
+      nextAdRef.current = data.nextAd ?? null;
+      waitingForAdNextRef.current = false;
       setTotalSteps(data.totalSteps ?? 2);
-      setCurrentAd(data.ad ?? null);
+      clearStartLoading();
 
-      const fallbackDuration = data.duration ?? 30;
-      resolveAdDuration(data.ad ?? null, fallbackDuration).then((duration) => {
-        currentDurationRef.current = duration;
-        setCurrentDuration(duration);
-        startCountdown(duration, nextStep);
-      });
+      const adStep = (data.step === 2 ? 2 : 1) as AdStep;
+      if (data.nextAd) {
+        void preloadPromoAdMedia(data.nextAd);
+      }
+
+      if (adStep === 2) {
+        playStep(2, data.ad ?? null, data.duration);
+        return;
+      }
+
+      playStep(1, data.ad ?? null, data.duration);
     },
-    [startCountdown, resolveAdDuration, clearStartLoading]
+    [clearStartLoading, playStep]
   );
 
   const startAds = useCallback(
     (roundId: string) => {
       if (!socket) return false;
-      if (isStartingAds || isWatching) return false;
+      if (isStartingAds || phase !== "idle") return false;
 
       setIsStartingAds(true);
-      setRewardGranted(false);
-      setRewardGrantedUI(false);
+      setPhase("loading");
+      nextAdRef.current = null;
+      waitingForAdNextRef.current = false;
 
-      if (startTimeoutRef.current) {
-        clearTimeout(startTimeoutRef.current);
-      }
+      if (startTimeoutRef.current) clearTimeout(startTimeoutRef.current);
       startTimeoutRef.current = setTimeout(() => {
         startTimeoutRef.current = null;
         setIsStartingAds(false);
+        setPhase("idle");
         showAlertAsToast("Ad unavailable", "Could not start ad. Please try again.");
-      }, 12000);
+      }, 15000);
 
       socket.emit("watch_ads", { roundId, adType: "admin" });
       return true;
     },
-    [socket, isStartingAds, isWatching]
+    [socket, isStartingAds, phase]
   );
 
   useEffect(() => {
     if (!socket) return;
 
-    const onStarted = (data: {
-      sessionId: string;
-      step: number;
-      duration?: number;
-      totalSteps?: number;
-      ad?: PromoAd;
-    }) => beginStep(data);
+    const onStarted = (data: Parameters<typeof handleSessionStart>[0]) =>
+      handleSessionStart(data);
 
     const onNext = (data: {
       step: number;
@@ -229,36 +206,51 @@ export function useAds() {
       ad?: PromoAd;
     }) => {
       if (!sessionRef.current) return;
-      stepCompletedRef.current = false;
-      beginStep({
+      waitingForAdNextRef.current = false;
+      handleSessionStart({
         sessionId: sessionRef.current,
-        ...data,
+        step: data.step,
+        duration: data.duration,
+        totalSteps: data.totalSteps,
+        ad: data.ad ?? nextAdRef.current,
+        nextAd: null,
       });
     };
 
     const onReward = () => {
       clearTimer();
-      setRewardGranted(true);
-      setRewardGrantedUI(true);
-      setTimeLeft(3);
+      waitingForAdNextRef.current = false;
+      setPhase("reward");
+      setTimeLeft(0);
       showAlertAsToast("Success", "2x Tap Boost activated!");
-      setTimeout(() => {
-        dismissAdModal();
-      }, 3000);
+      setTimeout(() => dismissAdModal(), 3000);
     };
 
     const onRejected = (data: { reason?: string; message?: string }) => {
-      if (rewardGrantedUI) return;
+      if (phaseRef.current === "reward") return;
+
+      const reason = data.reason ?? "";
+      if (reason === "FIRST_AD_TOO_SHORT" || reason === "SECOND_AD_TOO_SHORT") {
+        const msg =
+          AD_REJECT_MESSAGES[reason] || "Please watch the full ad.";
+        showAlertAsToast("Ad", msg);
+        if (waitingForAdNextRef.current && reason === "FIRST_AD_TOO_SHORT") {
+          waitingForAdNextRef.current = false;
+          setPhase("playing");
+        }
+        return;
+      }
+
       clearStartLoading();
       resetSession();
-      if (data.reason === "NO_ADS_AVAILABLE") {
+
+      if (reason === "NO_ADS_AVAILABLE") {
         showAlertAsToast("No active Ads", "No active Ads");
         return;
       }
+
       const msg =
-        data.message ||
-        AD_REJECT_MESSAGES[data.reason ?? ""] ||
-        "Could not play ad.";
+        data.message || AD_REJECT_MESSAGES[reason] || "Could not play ad.";
       showAlertAsToast("Ad unavailable", msg);
     };
 
@@ -277,7 +269,11 @@ export function useAds() {
       clearTimer();
       clearStartLoading();
     };
-  }, [socket, beginStep, resetSession, clearTimer, clearStartLoading, rewardGrantedUI, dismissAdModal]);
+  }, [socket, handleSessionStart, resetSession, clearTimer, clearStartLoading, dismissAdModal]);
+
+  const isWatching = phase === "loading" || phase === "playing" || phase === "reward";
+  const adTimerActive = phase === "playing" && timeLeft > 0;
+  const rewardGrantedUI = phase === "reward";
 
   return {
     startAds,
@@ -285,13 +281,16 @@ export function useAds() {
     isStartingAds,
     step,
     timeLeft,
-    sessionId,
+    sessionId: sessionRef.current,
     currentAd,
-    currentDuration,
+    currentDuration: stepDuration,
     totalSteps,
-    rewardGranted,
+    rewardGranted: rewardGrantedUI,
     rewardGrantedUI,
     dismissAdModal,
     resetSession,
+    markAdMediaReady: () => {},
+    adTimerActive,
+    adPhase: phase,
   };
 }

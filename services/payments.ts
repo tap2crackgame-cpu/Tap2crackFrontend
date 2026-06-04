@@ -31,6 +31,25 @@ async function authedFetch(path: string, token: string, init: RequestInit = {}) 
   return fetch(`${API_BASE}${path}`, { ...init, headers });
 }
 
+export async function initiateCoffeeBankTransfer(
+  token: string,
+  quantity = 1
+): Promise<InitiateBankTransferResponse> {
+  const res = await authedFetch("/api/payments/initiate-coffee-transfer", token, {
+    method: "POST",
+    body: JSON.stringify({ quantity }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      json.details ||
+      json.error ||
+      `initiateCoffeeBankTransfer failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return json;
+}
+
 export async function initiateBankTransfer(
   token: string,
   multiplier: 2 | 3,

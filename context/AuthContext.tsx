@@ -18,6 +18,7 @@ import {
 } from "@/utils/cache";
 import { AUTH_API } from "@/utils/api";
 import { isOAuthReturnPending } from "@/utils/oauth";
+import { resolveUserStats } from "@/utils/userStats";
 
 type AuthStatus =
   | "loading"
@@ -60,6 +61,11 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Older cached profiles may omit `stats`; map legacy flat fields. */
+function normalizeCachedUser(raw: User & Record<string, unknown>): User {
+  return { ...raw, stats: resolveUserStats(raw as User) };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -71,34 +77,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /* ---------------- MAP USER ---------------- */
 
   const mapUser = (backend: any): User => {
-    const wins = backend.stats?.wins ?? 0;
-
     const pUps = backend.powerUps ?? [];
-
-    return {
+    const draft: User = {
       id: backend.id,
       isAdmin: backend.isAdmin ?? false,
       email: backend.email ?? null,
       name: backend.name ?? "Unknown",
-      avatar: backend.avatarUrl ?? null,
+      avatar: backend.avatarUrl ?? backend.avatar ?? null,
       isGuest: backend.isGuest ?? false,
-      phone: backend.phone ?? null,
-
-      stats: {
-        eggsCracked: backend.stats?.eggsCracked ?? 0,
-        wins,
-        weeklyEggsCracked: backend.stats?.weeklyEggsCracked ?? 0,
-        totalTaps: backend.stats?.totalTaps ?? 0,
-        rank: backend.stats?.rank ?? getUserRank(wins),
-      },
-
+      phone: backend.phone ?? backend.phone_number ?? null,
+      stats: resolveUserStats(
+        {
+          ...backend,
+          stats: backend.stats,
+          wins: backend.stats?.wins ?? backend.wins,
+          cracked: backend.stats?.eggsCracked ?? backend.cracked,
+          weekly: backend.stats?.weeklyEggsCracked ?? backend.weekly,
+          lifetime_taps: backend.stats?.totalTaps ?? backend.lifetime_taps,
+        } as User & Record<string, unknown>
+      ),
       powerUps: pUps,
-
       powerUpInventory: buildPowerUpInventoryFromList(pUps),
-
       free2xAvailable: backend.free2xAvailable ?? false,
       roundsUntilFree2x: backend.roundsUntilFree2x ?? 0,
     };
+    return draft;
   };
 
   /* ---------------- LOGOUT ---------------- */
@@ -143,8 +146,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { user, activeToken: newToken };
     }
 
-    if (!res.ok) return null;
-     
+    if (!res.ok) {
+      if (__DEV__) {
+        console.warn("[Profile] fetch failed:", res.status, await res.text().catch(() => ""));
+      }
+      return null;
+    }
+
     const data = await res.json();
     if (!data.user) return null;
     const user = mapUser(data.user);
@@ -153,6 +161,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     lastProfileFetchRef.current = Date.now();
     return { user, activeToken: currentToken };
   } catch (e) {
+    if (__DEV__) {
+      console.warn("[Profile] network error:", e);
+    }
     return null;
   }
 }, []);
@@ -189,8 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const cached = await loadCachedProfile();
       if (cached) {
-        setAuthUser(cached);
-        setAuthStatus(computeStatus(cached, storedToken));
+        const normalized = normalizeCachedUser(
+          cached as User & Record<string, unknown>
+        );
+        setAuthUser(normalized);
+        setAuthStatus(computeStatus(normalized, storedToken));
         setAuthReady(true);
       }
 
@@ -312,8 +326,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem("token", result.activeToken);
     }
     setAuthStatus(computeStatus(result.user, result.activeToken));
-  } else if (force) {
-    setAuthStatus("unauthenticated");
+  } else if (force && __DEV__) {
+    console.warn("[Profile] refresh failed — keeping cached user");
   }
 }, [token, fetchProfile]);
 
@@ -343,6 +357,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isGuest: payload.user.isGuest ?? false,
         phone: payload.user.phone,
         stats: authUser?.stats,
+        wins: authUser?.stats?.wins,
+        cracked: authUser?.stats?.eggsCracked,
+        weekly: authUser?.stats?.weeklyEggsCracked,
+        lifetime_taps: authUser?.stats?.totalTaps,
         powerUps: authUser?.powerUps,
       });
 
