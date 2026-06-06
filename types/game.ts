@@ -159,6 +159,24 @@ export interface Winner {
   screenshot_url?: string | null;
 }
 
+/** Mask live round prize — never show ₦ amount before win. */
+export function formatCurrentPrizeDisplay(prize: Prize): string {
+  const typeLabel =
+    prize.type === "airtime"
+      ? "Airtime"
+      : prize.type === "coupon"
+        ? "Coupon"
+        : prize.type === "cash"
+          ? "Cash"
+          : "Prize";
+
+  if (prize.type === "airtime" || prize.type === "cash" || prize.type === "coupon") {
+    return `${typeLabel} · *******`;
+  }
+
+  return prize.description || typeLabel;
+}
+
 export function formatWinnerPrizeLabel(w: {
   prize_type?: string;
   prize_description?: string;

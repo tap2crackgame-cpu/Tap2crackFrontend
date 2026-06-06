@@ -216,6 +216,8 @@ export default function Tap2CrackGame() {
     !currentEgg.isCooldown &&
     !eggNoPowerUp;
   const showDesktopRails = isWideWeb && !!currentEgg && !testMode && !eggNoPowerUp;
+  const showMobilePowerBubble =
+    !isWideWeb && !!currentEgg && !testMode && !eggNoPowerUp && !showAd;
   const railCost2x = currentEgg ? calculatePowerUpCost(currentEgg.prize.value, 2) : 0;
   const railCost3x = currentEgg ? calculatePowerUpCost(currentEgg.prize.value, 3) : 0;
 
@@ -502,6 +504,42 @@ export default function Tap2CrackGame() {
               <Text style={styles.desktopWatchAdSub}>2x</Text>
                 </>
               )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {showMobilePowerBubble ? (
+          <View
+            style={[styles.mobilePowerBubbleWrap, { top: height * 0.5 }]}
+            pointerEvents="box-none"
+          >
+            <TouchableOpacity
+              activeOpacity={0.88}
+              disabled={isPaymentLoading}
+              onPress={() => powerUpPanelRef.current?.openPurchase("2x")}
+              style={[
+                styles.mobilePowerBubble,
+                isPaymentLoading && styles.mobilePowerBubbleDisabled,
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  activePowerUp?.type === "2x"
+                    ? ["#FFD700", "#FFA500"]
+                    : ["#4ECDC4", "#44B3AB"]
+                }
+                style={styles.mobilePowerBubbleGradient}
+              >
+                {isPowerUpActivating("2x") ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Zap size={18} color="#FFF" />
+                    <Text style={styles.mobilePowerBubbleLabel}>2x</Text>
+                    <Text style={styles.mobilePowerBubblePrice}>₦{railCost2x}</Text>
+                  </>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -953,6 +991,49 @@ const styles = StyleSheet.create({
   desktopWatchAdEmoji: { fontSize: 22, marginBottom: 2 },
   desktopWatchAdText: { fontSize: 13, fontWeight: "800" as const, color: "#FFF" },
   desktopWatchAdSub: { fontSize: 10, color: "rgba(255,255,255,0.65)", marginTop: 2 },
+  mobilePowerBubbleWrap: {
+    position: "absolute",
+    right: 10,
+    zIndex: 25,
+    transform: [{ translateY: -30 }],
+    pointerEvents: "box-none",
+  },
+  mobilePowerBubble: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.25)",
+    ...(Platform.OS === "web"
+      ? ({ boxShadow: "0 8px 24px rgba(0,0,0,0.35)" } as object)
+      : {
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.35,
+          shadowRadius: 8,
+        }),
+  },
+  mobilePowerBubbleDisabled: { opacity: 0.5 },
+  mobilePowerBubbleGradient: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+    gap: 1,
+  },
+  mobilePowerBubbleLabel: {
+    fontSize: 14,
+    fontWeight: "800" as const,
+    color: "#FFF",
+    lineHeight: 16,
+  },
+  mobilePowerBubblePrice: {
+    fontSize: 9,
+    fontWeight: "600" as const,
+    color: "rgba(255,255,255,0.9)",
+  },
   prizeTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',

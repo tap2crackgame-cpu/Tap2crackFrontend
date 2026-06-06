@@ -19,7 +19,9 @@ import {
   mergePowerUpInventory,
   buildPowerUpInventoryFromList,
   normalizeWinner,
+  getUserRank,
 } from '@/types/game';
+import { resolveUserStats } from '@/utils/userStats';
 import { fetchWinners } from '@/services/fetchleaderboard';
 import { playGameSound, playCrackMilestones } from '@/utils/sounds';
 import {
@@ -317,7 +319,7 @@ const handleTap = useCallback(() => {
   if (!egg || egg.isCooldown) return;
 
   if (!egg.isActive) {
-    if (egg.totalTaps > 0 && egg.currentTaps >= egg.totalTaps) {
+    if (egg.totalTaps > 0 && egg.currentTaps >= egg.totalTaps && !egg.isCooldown) {
       syncEggRoomState();
     }
     return;
@@ -365,7 +367,7 @@ const handleTap = useCallback(() => {
 }, [activePowerUp, flushTapBatch, syncEggRoomState]);
 
 
-const MODAL_AUTO_CLOSE_MS = 3000;
+const MODAL_AUTO_CLOSE_MS = 5000;
 
 const scheduleModalAutoClose = useCallback(() => {
   if (modalAutoCloseRef.current) {
@@ -422,6 +424,23 @@ const handleEggCracked = useCallback((data: {
     } else if (winner.prize_type === 'airtime' || winner.prize_type === 'cash') {
       void playGameSound('airtimeWin');
     }
+
+    setAuthUser((prev) => {
+      if (!prev) return prev;
+      const s = resolveUserStats(prev);
+      const nextWins = s.wins + 1;
+      const nextStats = {
+        ...s,
+        wins: nextWins,
+        eggsCracked: s.eggsCracked + 1,
+        weeklyEggsCracked: s.weeklyEggsCracked + 1,
+        rank: getUserRank(nextWins),
+      };
+      const next = { ...prev, stats: nextStats };
+      void saveCachedProfile(next);
+      return next;
+    });
+
     void refreshProfile(true);
     setTimeout(() => void refreshProfile(true), 2000);
     setTimeout(() => void refreshProfile(true), 5000);
@@ -434,6 +453,7 @@ const handleEggCracked = useCallback((data: {
   scheduleModalAutoClose();
 }, [
   authUser,
+  setAuthUser,
   setShowWinModal,
   setShowLoseModal,
   loadWinnersFromApi,
@@ -447,7 +467,44 @@ const handleEggCracked = useCallback((data: {
         clearTimeout(modalAutoCloseRef.current);
       }
     };
-  }, []); 
+  }, []);
+
+  /*========Recover stuck 100% round (no modal / no cooldown)========*/
+  const stuckRecoveryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const egg = currentEgg;
+    if (stuckRecoveryRef.current) {
+      clearTimeout(stuckRecoveryRef.current);
+      stuckRecoveryRef.current = null;
+    }
+    if (!egg || egg.isCooldown || !socket) return;
+
+    const total = Number(egg.totalTaps ?? 0);
+    const current = Number(egg.currentTaps ?? 0);
+    const atFull = total > 0 && current >= total;
+    if (!atFull) return;
+
+    stuckRecoveryRef.current = setTimeout(() => {
+      if (!eggCrackedLockRef.current) {
+        console.warn("[Game] Round at 100% without crack — re-syncing room");
+        syncEggRoomState();
+      }
+    }, 3500);
+
+    return () => {
+      if (stuckRecoveryRef.current) {
+        clearTimeout(stuckRecoveryRef.current);
+        stuckRecoveryRef.current = null;
+      }
+    };
+  }, [
+    currentEgg?.roundId,
+    currentEgg?.currentTaps,
+    currentEgg?.totalTaps,
+    currentEgg?.isCooldown,
+    socket,
+    syncEggRoomState,
+  ]);
 
   /*========Socket Handlers========*/
 

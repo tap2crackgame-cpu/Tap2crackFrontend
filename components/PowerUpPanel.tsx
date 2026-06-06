@@ -9,11 +9,12 @@ import {
 } from 'react-native';
 import { X, Lock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PowerUpType, calculatePowerUpCost } from '@/types/game';
+import { PowerUpType, calculatePowerUpCost, formatCurrentPrizeDisplay } from '@/types/game';
 
 export type PowerUpPanelRef = {
   pressPowerUp: (type: PowerUpType) => void;
   pressWatchAd: () => void;
+  openPurchase: (type: PowerUpType) => void;
 };
 
 interface PowerUpPanelProps {
@@ -139,9 +140,20 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
       onWatchAd();
     };
 
+    const openPurchase = (type: PowerUpType) => {
+      if (isNoPowerUpEgg || isPaymentLoading) return;
+
+      const is2x = type === "2x" || type === "X2";
+      const normalizedType = (is2x ? "X2" : "X3") as PowerUpType;
+      setSelectedPowerUp(normalizedType);
+      setQuantity(1);
+      setShowPurchaseModal(true);
+    };
+
     useImperativeHandle(ref, () => ({
       pressPowerUp: handlePowerUpPress,
       pressWatchAd: handleWatchAd,
+      openPurchase,
     }));
 
     const handlePurchase = () => {
@@ -184,7 +196,9 @@ const PowerUpPanel = forwardRef<PowerUpPanelRef, PowerUpPanelProps>(
           <Text style={styles.prizeIcon}>🎁</Text>
           <View style={styles.prizeTextContainer}>
             <Text style={styles.prizeLabel}>Current Prize</Text>
-           <Text style={styles.prizeValue}>{egg.prize.description}</Text>
+           <Text style={styles.prizeValue}>
+             {egg?.prize ? formatCurrentPrizeDisplay(egg.prize) : "Prize · *******"}
+           </Text>
           </View>
         </LinearGradient>
 
