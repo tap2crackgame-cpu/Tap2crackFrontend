@@ -10,6 +10,33 @@ function toStatNumber(value: unknown): number {
   return 0;
 }
 
+/** Never let a stale profile fetch drop stats below what the UI already shows. */
+export function mergeUserStats(
+  prev: UserStats | null | undefined,
+  next: UserStats
+): UserStats {
+  const p = prev ?? {
+    eggsCracked: 0,
+    wins: 0,
+    weeklyEggsCracked: 0,
+    totalTaps: 0,
+    rank: getUserRank(0),
+  };
+
+  const wins = Math.max(p.wins, next.wins);
+  const eggsCracked = Math.max(p.eggsCracked, next.eggsCracked);
+  const weeklyEggsCracked = Math.max(p.weeklyEggsCracked, next.weeklyEggsCracked);
+  const totalTaps = Math.max(p.totalTaps, next.totalTaps);
+
+  return {
+    wins,
+    eggsCracked,
+    weeklyEggsCracked,
+    totalTaps,
+    rank: wins >= p.wins ? getUserRank(wins) : p.rank,
+  };
+}
+
 /** Normalize stats from API payload, cache, or legacy flat user fields. */
 export function resolveUserStats(
   user: User | null | undefined
@@ -48,5 +75,6 @@ export function resolveUserStats(
 }
 
 export function formatStat(value: number): string {
-  return String(toStatNumber(value));
+  const n = toStatNumber(value);
+  return Number.isFinite(n) ? String(n) : "0";
 }

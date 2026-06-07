@@ -18,7 +18,7 @@ import {
 } from "@/utils/cache";
 import { AUTH_API } from "@/utils/api";
 import { isOAuthReturnPending } from "@/utils/oauth";
-import { resolveUserStats } from "@/utils/userStats";
+import { resolveUserStats, mergeUserStats } from "@/utils/userStats";
 
 type AuthStatus =
   | "loading"
@@ -78,6 +78,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const mapUser = (backend: any): User => {
     const pUps = backend.powerUps ?? [];
+    const stats = resolveUserStats({
+      ...backend,
+      stats: backend.stats,
+      wins: backend.stats?.wins ?? backend.wins,
+      cracked: backend.stats?.eggsCracked ?? backend.cracked,
+      weekly: backend.stats?.weeklyEggsCracked ?? backend.weekly,
+      lifetime_taps: backend.stats?.totalTaps ?? backend.lifetime_taps,
+    } as User & Record<string, unknown>);
+
     const draft: User = {
       id: backend.id,
       isAdmin: backend.isAdmin ?? false,
@@ -86,16 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatar: backend.avatarUrl ?? backend.avatar ?? null,
       isGuest: backend.isGuest ?? false,
       phone: backend.phone ?? backend.phone_number ?? null,
-      stats: resolveUserStats(
-        {
-          ...backend,
-          stats: backend.stats,
-          wins: backend.stats?.wins ?? backend.wins,
-          cracked: backend.stats?.eggsCracked ?? backend.cracked,
-          weekly: backend.stats?.weeklyEggsCracked ?? backend.weekly,
-          lifetime_taps: backend.stats?.totalTaps ?? backend.lifetime_taps,
-        } as User & Record<string, unknown>
-      ),
+      stats,
       powerUps: pUps,
       powerUpInventory: buildPowerUpInventoryFromList(pUps),
       free2xAvailable: backend.free2xAvailable ?? false,
@@ -103,6 +103,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     return draft;
   };
+
+  const applyProfileUser = useCallback((prev: User | null, mapped: User): User => {
+    if (!prev) return mapped;
+    return {
+      ...mapped,
+      stats: mergeUserStats(prev.stats, mapped.stats),
+    };
+  }, []);
 
   /* ---------------- LOGOUT ---------------- */
 
@@ -140,8 +148,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!retryRes.ok) return null;
       const data = await retryRes.json();
       const user = mapUser(data.user);
-      setAuthUser(user);
-      await saveCachedProfile(user);
+      setAuthUser((prev) => {
+        const merged = applyProfileUser(prev, user);
+        void saveCachedProfile(merged);
+        return merged;
+      });
       lastProfileFetchRef.current = Date.now();
       return { user, activeToken: newToken };
     }
@@ -156,8 +167,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await res.json();
     if (!data.user) return null;
     const user = mapUser(data.user);
-    setAuthUser(user);
-    await saveCachedProfile(user);
+    setAuthUser((prev) => {
+      const merged = applyProfileUser(prev, user);
+      void saveCachedProfile(merged);
+      return merged;
+    });
     lastProfileFetchRef.current = Date.now();
     return { user, activeToken: currentToken };
   } catch (e) {
@@ -166,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     return null;
   }
-}, []);
+}, [applyProfileUser]);
 
   /* ---------------- COMPUTE STATUS ---------------- */
 

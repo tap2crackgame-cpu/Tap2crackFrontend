@@ -82,7 +82,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
   }
 
   const pun = PUNS[Math.floor(Math.random() * PUNS.length)];
-  const stats = resolveUserStats(user);
+  const stats = authUser?.stats ?? resolveUserStats(authUser);
 
   return (
     <SafeAreaView style={styles.container}>

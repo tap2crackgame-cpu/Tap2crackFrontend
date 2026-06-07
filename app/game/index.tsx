@@ -216,7 +216,7 @@ export default function Tap2CrackGame() {
     !currentEgg.isCooldown &&
     !eggNoPowerUp;
   const showDesktopRails = isWideWeb && !!currentEgg && !testMode && !eggNoPowerUp;
-  const showMobilePowerBubble =
+  const showMobilePowerBubbleMount =
     !isWideWeb && !!currentEgg && !testMode && !eggNoPowerUp && !showAd;
   const railCost2x = currentEgg ? calculatePowerUpCost(currentEgg.prize.value, 2) : 0;
   const railCost3x = currentEgg ? calculatePowerUpCost(currentEgg.prize.value, 3) : 0;
@@ -229,6 +229,45 @@ export default function Tap2CrackGame() {
 
   const progress = testMode ? (testCrackLevel || 0) : serverProgress;
   const progressPct = Math.min(Math.max(progress, 0), 100);
+  const mobileBubbleTier: "2x" | "3x" = progressPct >= 70 ? "3x" : "2x";
+  const mobileBubbleVisible =
+    showMobilePowerBubbleMount &&
+    progressPct >= 50 &&
+    progressPct < 100 &&
+    !currentEgg?.isCooldown &&
+    !powerUpUsedThisRound &&
+    !activePowerUp;
+  const mobileBubbleOpacity = useRef(new Animated.Value(0)).current;
+  const mobileBubbleScale = useRef(new Animated.Value(1)).current;
+  const mobileBubbleTierRef = useRef<"2x" | "3x">("2x");
+
+  useEffect(() => {
+    Animated.timing(mobileBubbleOpacity, {
+      toValue: mobileBubbleVisible ? 1 : 0,
+      duration: mobileBubbleVisible ? 400 : 300,
+      useNativeDriver: true,
+    }).start();
+  }, [mobileBubbleVisible, mobileBubbleOpacity]);
+
+  useEffect(() => {
+    mobileBubbleTierRef.current = "2x";
+    mobileBubbleOpacity.setValue(0);
+    mobileBubbleScale.setValue(1);
+  }, [currentEgg?.roundId, mobileBubbleOpacity, mobileBubbleScale]);
+
+  useEffect(() => {
+    if (!mobileBubbleVisible || progressPct < 50) return;
+    const tier: "2x" | "3x" = progressPct >= 70 ? "3x" : "2x";
+    if (tier === mobileBubbleTierRef.current) return;
+    mobileBubbleTierRef.current = tier;
+    mobileBubbleScale.setValue(0.88);
+    Animated.spring(mobileBubbleScale, {
+      toValue: 1,
+      friction: 7,
+      tension: 120,
+      useNativeDriver: true,
+    }).start();
+  }, [progressPct, mobileBubbleVisible, mobileBubbleScale]);
   const popupsProgressOk = progressPct >= 50;
    const popupsOnlineOk = onlineUsers > 1;
   const popupsCooldownOk = !currentEgg?.isCooldown;
@@ -508,30 +547,41 @@ export default function Tap2CrackGame() {
           </View>
         ) : null}
 
-        {showMobilePowerBubble ? (
-          <View
-            style={[styles.mobilePowerBubbleWrap, { top: height * 0.5 }]}
-            pointerEvents="box-none"
+        {showMobilePowerBubbleMount ? (
+          <Animated.View
+            style={[
+              styles.mobilePowerBubbleWrap,
+              { top: height * 0.5, opacity: mobileBubbleOpacity, transform: [{ translateY: -30 }, { scale: mobileBubbleScale }] },
+            ]}
+            pointerEvents={mobileBubbleVisible ? "box-none" : "none"}
           >
             <TouchableOpacity
               activeOpacity={0.88}
-              disabled={isPaymentLoading}
-              onPress={() => powerUpPanelRef.current?.openPurchase("2x")}
+              disabled={isPaymentLoading || !mobileBubbleVisible}
+              onPress={() => powerUpPanelRef.current?.openPurchase(mobileBubbleTier)}
               style={[
                 styles.mobilePowerBubble,
-                isPaymentLoading && styles.mobilePowerBubbleDisabled,
+                (isPaymentLoading || !mobileBubbleVisible) && styles.mobilePowerBubbleDisabled,
               ]}
             >
               <LinearGradient
                 colors={
-                  activePowerUp?.type === "2x"
+                  activePowerUp?.type === mobileBubbleTier
                     ? ["#FFD700", "#FFA500"]
-                    : ["#4ECDC4", "#44B3AB"]
+                    : mobileBubbleTier === "3x"
+                      ? ["#9B59B6", "#8E44AD"]
+                      : ["#4ECDC4", "#44B3AB"]
                 }
                 style={styles.mobilePowerBubbleGradient}
               >
-                {isPowerUpActivating("2x") ? (
+                {isPowerUpActivating(mobileBubbleTier) ? (
                   <ActivityIndicator color="#FFF" size="small" />
+                ) : mobileBubbleTier === "3x" ? (
+                  <>
+                    <Crown size={18} color="#FFF" />
+                    <Text style={styles.mobilePowerBubbleLabel}>3x</Text>
+                    <Text style={styles.mobilePowerBubblePrice}>₦{railCost3x}</Text>
+                  </>
                 ) : (
                   <>
                     <Zap size={18} color="#FFF" />
@@ -541,7 +591,7 @@ export default function Tap2CrackGame() {
                 )}
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         ) : null}
         
         <View style={[styles.header, { paddingHorizontal: padH }]}>
@@ -995,7 +1045,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
     zIndex: 25,
-    transform: [{ translateY: -30 }],
     pointerEvents: "box-none",
   },
   mobilePowerBubble: {

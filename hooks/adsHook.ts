@@ -7,7 +7,8 @@ import { preloadPromoAdMedia } from "@/utils/preloadAdMedia";
 type AdStep = 1 | 2;
 type AdPhase = "idle" | "loading" | "playing" | "reward";
 
-const DEFAULT_DURATION = 30;
+const DEFAULT_DURATION = 15;
+const MAX_AD_DURATION = 30;
 
 const AD_REJECT_MESSAGES: Record<string, string> = {
   ROUND_ENDED: "This round has ended.",
@@ -22,7 +23,11 @@ const AD_REJECT_MESSAGES: Record<string, string> = {
 function clampDuration(seconds?: number) {
   const n = Number(seconds);
   if (!Number.isFinite(n)) return DEFAULT_DURATION;
-  return Math.max(5, Math.min(30, Math.round(n)));
+  return Math.max(5, Math.min(MAX_AD_DURATION, Math.round(n)));
+}
+
+function resolveAdDuration(ad: PromoAd | null | undefined, duration?: number) {
+  return clampDuration(duration ?? ad?.durationSeconds);
 }
 
 export function useAds() {
@@ -131,7 +136,7 @@ export function useAds() {
         setPhase("loading");
         return;
       }
-      const secs = clampDuration(duration);
+      const secs = resolveAdDuration(ad, duration);
       setCurrentAd(ad);
       void preloadPromoAdMedia(ad);
       startStepTimer(adStep, secs);

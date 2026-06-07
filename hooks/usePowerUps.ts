@@ -10,7 +10,13 @@ type UsePowerUpSocketProps = {
   setInventory: React.Dispatch<React.SetStateAction<InventoryCounts>>;
   setActivePowerUp: React.Dispatch<React.SetStateAction<PowerUp | null>>;
   onNoInventory?: (type: PowerUpType) => void;
+  getCurrentRoundId?: () => string | undefined;
 };
+
+function normalizePowerUpType(type: PowerUpType | string): PowerUpType {
+  const t = String(type).toLowerCase().replace(/^x/, "");
+  return t === "3" ? "3x" : "2x";
+}
 
 function powerUpLabel(type: PowerUpType | string, multiplier?: number): string {
   const t = String(type).toUpperCase();
@@ -22,6 +28,7 @@ export function usePowerUp({
   setInventory,
   setActivePowerUp,
   onNoInventory,
+  getCurrentRoundId,
 }: UsePowerUpSocketProps) {
   const socket = useSocket();
   const { authUser } = useAuth();
@@ -65,18 +72,26 @@ export function usePowerUp({
 
     socket.on(
       "powerup_activated",
-      (data: { type: PowerUpType; multiplier: number }) => {
+      (data: { type: PowerUpType; multiplier: number; roundId?: string; restored?: boolean }) => {
+        const currentRoundId = getCurrentRoundId?.();
+        if (data.roundId && currentRoundId && data.roundId !== currentRoundId) {
+          return;
+        }
+
         console.log(" SOCKET: powerup_activated received:", data);
         setActivatingPowerUp(null);
+        const normalizedType = normalizePowerUpType(data.type);
         setActivePowerUp({
-          type: data.type,
+          type: normalizedType,
           multiplier: data.multiplier,
           cost: 0,
           active: true,
           count: 1,
         });
-        const label = powerUpLabel(data.type, data.multiplier);
-        showAlertAsToast("Success", `${label} Tap Boost activated!`);
+        if (!data.restored) {
+          const label = powerUpLabel(data.type, data.multiplier);
+          showAlertAsToast("Success", `${label} Tap Boost activated!`);
+        }
       }
     );
 
@@ -93,7 +108,7 @@ export function usePowerUp({
       socket.off("powerup_activated");
       socket.off("powerup_failed");
     };
-  }, [socket, setInventory, setActivePowerUp, onNoInventory]);
+  }, [socket, setInventory, setActivePowerUp, onNoInventory, getCurrentRoundId]);
 
   return {
     activatePowerUp,

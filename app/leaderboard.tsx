@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Trophy, Crown, Medal, Egg } from "lucide-react-native";
 import { useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LeaderboardEntry } from "@/types/game";
 import { fetchLeaderboard } from "@/services/fetchleaderboard";
 import { EGG_RANKS } from "@/types/game";
@@ -13,11 +13,15 @@ import { resolveUserStats, formatStat } from "@/utils/userStats";
 
 export default function Tap2CrackLeaderboard() {
   const { authUser: user, token, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
 
   useFocusEffect(
     useCallback(() => {
-      if (token) void refreshProfile(true);
-    }, [token, refreshProfile])
+      if (token) {
+        void refreshProfile(true);
+        void queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      }
+    }, [token, refreshProfile, queryClient])
   );
   const { data: leaderboard = [], isLoading, isError } = useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard'],
@@ -32,8 +36,14 @@ export default function Tap2CrackLeaderboard() {
   const userEntry = list.find((e) => String(e.userId) === myId);
   const userRank = userEntry?.rank ?? null;
   const profileStats = resolveUserStats(user);
-  const weeklyCount = userEntry?.weeklyEggsCracked ?? profileStats.weeklyEggsCracked;
-  const totalCount = userEntry?.eggsCracked ?? profileStats.eggsCracked;
+  const weeklyCount = Math.max(
+    userEntry?.weeklyEggsCracked ?? 0,
+    profileStats.weeklyEggsCracked
+  );
+  const totalCount = Math.max(
+    userEntry?.eggsCracked ?? 0,
+    profileStats.eggsCracked
+  );
 
   const rankIcon = (rank: number) => {
     if (rank === 1) return <Crown size={20} color="#FFD700" />;
@@ -92,6 +102,12 @@ export default function Tap2CrackLeaderboard() {
             <View style={styles.list}>
               {list.map((entry) => {
                 const isMe = entry.userId === user?.id;
+                const eggsCracked = isMe
+                  ? Math.max(entry.eggsCracked, profileStats.eggsCracked)
+                  : entry.eggsCracked;
+                const wins = isMe
+                  ? Math.max(entry.wins, profileStats.wins)
+                  : entry.wins;
                 return (
                   <View key={entry.userId} style={[styles.item, entry.rank <= 3 && styles.topItem, isMe && styles.currentUserItem]}>
                     <View style={styles.rankCol}>{rankIcon(entry.rank)}</View>
@@ -103,11 +119,11 @@ export default function Tap2CrackLeaderboard() {
                         {entry.userName || 'Anonymous'}
                         {isMe ? ' (You)' : ''}
                       </Text>
-                      <Text style={styles.eggs}>{entry.eggsCracked} eggs | {entry.wins} wins</Text>
+                      <Text style={styles.eggs}>{eggsCracked} eggs | {wins} wins</Text>
                     </View>
                     <View style={styles.score}>
                       <Trophy size={14} color={entry.rank <= 3 ? "#FFD700" : "#888"} />
-                      <Text style={[styles.scoreTxt, entry.rank <= 3 && { color: "#FFD700" }]}>{entry.eggsCracked}</Text>
+                      <Text style={[styles.scoreTxt, entry.rank <= 3 && { color: "#FFD700" }]}>{eggsCracked}</Text>
                     </View>
                   </View>
                 );

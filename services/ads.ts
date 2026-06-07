@@ -10,6 +10,7 @@ export interface PromoAd {
   companyLogoUrl: string;
   mediaUrl: string;
   mediaType: PromoAdMediaType;
+  durationSeconds?: number;
   isActive: boolean;
   sortOrder: number;
   createdAt?: string;

@@ -21,7 +21,7 @@ import {
   normalizeWinner,
   getUserRank,
 } from '@/types/game';
-import { resolveUserStats } from '@/utils/userStats';
+import { resolveUserStats, mergeUserStats } from '@/utils/userStats';
 import { fetchWinners } from '@/services/fetchleaderboard';
 import { playGameSound, playCrackMilestones } from '@/utils/sounds';
 import {
@@ -29,6 +29,11 @@ import {
   mergeWinnersByRecency,
   saveCachedRecentWinners,
 } from '@/utils/recentWinnersCache';
+import {
+  clearActivePowerUpSession,
+  loadActivePowerUpSession,
+  saveActivePowerUpSession,
+} from '@/utils/activePowerUpSession';
 
 
 // Keep client limits close to backend limits for smoother tapping on mobile.
@@ -155,6 +160,7 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
   const { activatePowerUp, purchasePowerUp, activatingPowerUp } = usePowerUp({
     setInventory,
     setActivePowerUp,
+    getCurrentRoundId: () => currentEggRef.current?.roundId,
     onNoInventory: (type) => {
     setPendingType(type);
     setShowPurchaseModal(true);
@@ -185,6 +191,39 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     }
   }, [activePowerUp]);
 
+  useEffect(() => {
+    if (!activePowerUp || !authUser?.id || !currentEgg?.roundId) return;
+    void saveActivePowerUpSession({
+      userId: String(authUser.id),
+      roundId: currentEgg.roundId,
+      type: activePowerUp.type,
+      multiplier: activePowerUp.multiplier,
+    });
+  }, [activePowerUp, authUser?.id, currentEgg?.roundId]);
+
+  useEffect(() => {
+    const userId = authUser?.id;
+    const roundId = currentEgg?.roundId;
+    if (!userId || !roundId || currentEgg?.isCooldown || activePowerUp) return;
+
+    let cancelled = false;
+    void loadActivePowerUpSession(String(userId), roundId).then((session) => {
+      if (cancelled || !session) return;
+      setActivePowerUp({
+        type: session.type,
+        multiplier: session.multiplier,
+        cost: 0,
+        active: true,
+        count: 1,
+      });
+      setPowerUpUsedThisRound(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser?.id, currentEgg?.roundId, currentEgg?.isCooldown, activePowerUp]);
+
  
   /*========Reset Finished Round And Nomarlize New Round=======*/
   const applyRoundToState = useCallback((db: DbRound) => {
@@ -201,6 +240,7 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
 
     setActivePowerUp(null);
     setPowerUpUsedThisRound(false);
+    void clearActivePowerUpSession();
     setRecentTaps(0);
     setOtherPlayersTaps(0);
     setOthersActivity(0);
@@ -386,6 +426,9 @@ const handleEggCracked = useCallback((data: {
   antiStreakBlocked?: boolean;
   blockedTapperId?: string;
 }) => {
+  setActivePowerUp(null);
+  void clearActivePowerUpSession();
+
   if (data.antiStreakBlocked) {
     eggCrackedLockRef.current = true;
     setShowWinModal(false);
@@ -441,9 +484,10 @@ const handleEggCracked = useCallback((data: {
       return next;
     });
 
+    void queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     void refreshProfile(true);
-    setTimeout(() => void refreshProfile(true), 2000);
-    setTimeout(() => void refreshProfile(true), 5000);
+    setTimeout(() => void refreshProfile(true), 2500);
+    setTimeout(() => void refreshProfile(true), 6000);
     setShowWinModal(true);
     setShowLoseModal(false);
   } else {
@@ -458,6 +502,7 @@ const handleEggCracked = useCallback((data: {
   setShowLoseModal,
   loadWinnersFromApi,
   refreshProfile,
+  queryClient,
   scheduleModalAutoClose,
 ]);
 
@@ -547,7 +592,8 @@ const handleEggCracked = useCallback((data: {
       if (!payload?.stats) return;
       setAuthUser((prev) => {
         if (!prev) return prev;
-        const next = { ...prev, stats: payload.stats as UserStats };
+        const nextStats = mergeUserStats(prev.stats, payload.stats as UserStats);
+        const next = { ...prev, stats: nextStats };
         void saveCachedProfile(next);
         return next;
       });

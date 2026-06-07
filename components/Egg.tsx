@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Animated, StyleSheet, Pressable, Text, Platform } from 'react-native';
-import Svg, { Path, Ellipse, Circle } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Animated, StyleSheet, TouchableWithoutFeedback, Text, Platform } from 'react-native';
+import Svg, { Path, Ellipse, Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { EggType, EGG_CONFIGS } from '@/types/game';
 
 interface EggProps {
@@ -13,8 +12,6 @@ interface EggProps {
   isLoser?: boolean;
   testCrackLevel?: number | null;
 }
-
-const AnimatedSvg = Animated.createAnimatedComponent(Svg);
 
 const getEggGradient = (type: EggType): [string, string] => {
   switch (type) {
@@ -214,14 +211,21 @@ export default function EggComponent({
   const crackStage = getCrackStage();
 
   return (
-    <Pressable
+    <TouchableWithoutFeedback
       onPressIn={handleTap}
       disabled={isCooldown || isCracked}
-      style={styles.container}
     >
       <Animated.View
         style={[
+          styles.container,
           styles.eggWrapper,
+          Platform.OS === 'web'
+            ? ({
+                outlineStyle: 'none',
+                outlineWidth: 0,
+                WebkitTapHighlightColor: 'transparent',
+              } as object)
+            : null,
           {
             transform: [
               { translateY: bounceAnim },
@@ -234,24 +238,23 @@ export default function EggComponent({
         <View style={styles.eggContainer}>
           {/* Main Egg or Broken Pieces */}
           {!showYolk ? (
-            <LinearGradient
-              colors={[gradientStart, gradientEnd]}
-              style={[
-                styles.eggGradient,
-                isLoser && styles.loserEgg,
-              ]}
-              start={{ x: 0.3, y: 0 }}
-              end={{ x: 0.7, y: 1 }}
-            >
+            <View style={[styles.eggGradient, isLoser && styles.loserEgg]}>
               <Svg width="180" height="220" viewBox="0 0 180 220">
+                <Defs>
+                  <SvgGradient id="eggFill" x1="54" y1="0" x2="126" y2="220" gradientUnits="userSpaceOnUse">
+                    <Stop offset="0" stopColor={gradientStart} />
+                    <Stop offset="1" stopColor={gradientEnd} />
+                  </SvgGradient>
+                </Defs>
                 <Ellipse
                   cx="90"
                   cy="110"
                   rx="85"
                   ry="105"
-                  fill={gradientStart}
+                  fill="url(#eggFill)"
+                  stroke="none"
                 />
-                
+
                 {/* Shine highlight */}
                 <Ellipse
                   cx="70"
@@ -259,8 +262,9 @@ export default function EggComponent({
                   rx="25"
                   ry="35"
                   fill="rgba(255,255,255,0.3)"
+                  stroke="none"
                 />
-                
+
                 {/* Crack lines based on progress */}
                 {crackStage && crackStage !== 'broken' && CRACK_PATHS[crackStage].map((path, i) => (
                   <Path
@@ -273,7 +277,7 @@ export default function EggComponent({
                   />
                 ))}
               </Svg>
-            </LinearGradient>
+            </View>
           ) : (
             /* Broken egg with scattered fragments */
             <View style={[styles.eggGradient, styles.brokenEggContainer]}>
@@ -333,7 +337,6 @@ export default function EggComponent({
             </Animated.View>
           )}
 
-          <View style={[styles.glow, { opacity: 0.3 + (effectiveProgress / 200) }]} />
         </View>
 
         <View style={styles.eggLabel}>
@@ -345,7 +348,7 @@ export default function EggComponent({
           )}
         </View>
       </Animated.View>
-    </Pressable>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -365,8 +368,6 @@ const styles = StyleSheet.create({
   eggGradient: {
     width: 180,
     height: 220,
-    borderRadius: 90,
-    overflow: 'hidden',
   },
   brokenEggContainer: {
     backgroundColor: 'transparent',
@@ -385,7 +386,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 90,
   },
   loserEmoji: {
     fontSize: 48,
@@ -417,15 +417,6 @@ const styles = StyleSheet.create({
   },
   yolkEmoji: {
     fontSize: 40,
-  },
-  glow: {
-    position: 'absolute',
-    width: 200,
-    height: 240,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    transform: [{ scale: 1.1 }],
-    zIndex: -1,
   },
   eggLabel: {
     marginTop: 20,

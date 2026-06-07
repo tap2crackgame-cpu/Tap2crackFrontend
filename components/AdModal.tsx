@@ -28,7 +28,7 @@ interface AdModalProps {
 }
 
 const DESKTOP_BREAKPOINT = 768;
-const DESKTOP_CARD_MAX_WIDTH = 840;
+const DESKTOP_MIN_WIDTH = 700;
 
 export default function AdModal({
   visible,
@@ -42,12 +42,11 @@ export default function AdModal({
   timerActive = false,
   adPhase = "playing",
 }: AdModalProps) {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [muted, setMuted] = useState(false);
 
   const isDesktopLayout = width >= DESKTOP_BREAKPOINT;
-  const desktopCardMaxHeight = Math.min(height * 0.88, 760);
   const isVideoAd = currentAd?.mediaType === "video";
   const isLoading = adPhase === "loading" && !rewardGranted;
   const showTimer = timerActive && timeLeft > 0 && !rewardGranted;
@@ -96,7 +95,6 @@ export default function AdModal({
           style={[
             styles.container,
             isDesktopLayout && styles.containerDesktop,
-            isDesktopLayout && { maxHeight: desktopCardMaxHeight },
           ]}
         >
           <View
@@ -292,15 +290,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   overlayDesktop: {
-    backgroundColor: "rgba(8, 10, 18, 0.82)",
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    ...(Platform.OS === "web"
-      ? ({
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        } as object)
-      : {}),
+    backgroundColor: "#000",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   container: {
     width: "100%",
@@ -309,19 +301,14 @@ const styles = StyleSheet.create({
   },
   containerDesktop: {
     width: "100%",
-    maxWidth: DESKTOP_CARD_MAX_WIDTH,
-    height: "auto",
-    maxHeight: "min(88vh, 760px)" as unknown as number,
+    minWidth: DESKTOP_MIN_WIDTH,
+    maxWidth: "100%",
+    height: "100%",
+    maxHeight: "100%",
     backgroundColor: "#12131f",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 0,
+    borderWidth: 0,
     overflow: "hidden",
-    ...(Platform.OS === "web"
-      ? ({
-          boxShadow: "0 28px 80px rgba(0, 0, 0, 0.55)",
-        } as object)
-      : {}),
   },
   content: {
     flex: 1,
@@ -335,8 +322,8 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   contentDesktop: {
-    flex: 0,
-    minHeight: 420,
+    flex: 1,
+    minHeight: 0,
     paddingHorizontal: 0,
     paddingTop: 0,
     paddingBottom: 0,
@@ -470,7 +457,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bodyDesktop: {
-    flex: 0,
+    flex: 1,
+    minHeight: 0,
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 8,
@@ -515,10 +503,9 @@ const styles = StyleSheet.create({
     borderRadius: 0,
   },
   mediaBoxDesktop: {
-    flex: 0,
+    flex: 1,
     width: "100%",
-    aspectRatio: 16 / 9,
-    minHeight: undefined,
+    minHeight: 400,
     marginBottom: 0,
     borderRadius: 14,
     borderWidth: 1,
@@ -539,8 +526,8 @@ const styles = StyleSheet.create({
   },
   loadingBox: { alignItems: "center", paddingVertical: 48, gap: 12, flex: 1 },
   loadingBoxDesktop: {
-    flex: 0,
-    minHeight: 280,
+    flex: 1,
+    minHeight: 0,
     justifyContent: "center",
   },
   loadingText: { color: "rgba(255,255,255,0.6)", fontSize: 14 },
@@ -551,8 +538,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rewardBoxDesktop: {
-    flex: 0,
-    minHeight: 320,
+    flex: 1,
+    minHeight: 0,
+    justifyContent: "center",
     paddingVertical: 48,
     paddingHorizontal: 24,
   },
