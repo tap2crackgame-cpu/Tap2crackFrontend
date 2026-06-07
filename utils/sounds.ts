@@ -9,6 +9,16 @@ const SOUND_SOURCES = {
 
 export type GameSoundKey = keyof typeof SOUND_SOURCES;
 
+let crackSoundEnabled = true;
+
+export function applyCrackSoundEnabled(enabled: boolean) {
+  crackSoundEnabled = enabled;
+}
+
+export function isCrackSoundEnabled() {
+  return crackSoundEnabled;
+}
+
 /** Progress thresholds where crack sfx plays (never at 100% burst). */
 export const CRACK_SOUND_MILESTONES = [
   25, 30, 45, 60, 65, 70, 75, 80, 85, 90, 95,
@@ -31,6 +41,7 @@ async function ensureAudioMode() {
 }
 
 export async function playGameSound(key: GameSoundKey) {
+  if (key === "eggCrack" && !crackSoundEnabled) return;
   try {
     await ensureAudioMode();
     const { sound } = await Audio.Sound.createAsync(SOUND_SOURCES[key], {
@@ -52,6 +63,7 @@ export function playCrackMilestones(
   progressPct: number,
   played: Set<number>
 ) {
+  if (!crackSoundEnabled) return;
   if (progressPct >= 100) return;
 
   const triggered = CRACK_SOUND_MILESTONES.filter(

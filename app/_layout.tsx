@@ -9,6 +9,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { useDisableZoomAndSelect } from "@/hooks/useDisableZoomAndSelect";
 import { SocketProvider } from "@/hooks/SocketContext";
+import { GameSettingsProvider } from "@/context/GameSettingsContext";
 import { GameProvider } from "@/context/GameContext";
 import { EggProvider } from "@/context/eggContext";
 import { useAuth } from "@/context/AuthContext";
@@ -131,15 +132,17 @@ export default function Tap2CrackRootLayout() {
         <ToastProvider>
           <AuthProvider>
             <SocketProvider>
-              <EggProvider>
-                <GameProvider>
-                  <GestureHandlerRootView style={styles.gestureRoot}>
-                    <View style={styles.rootContainer}>
-                      <AppNavigation />
-                    </View>
-                  </GestureHandlerRootView>
-                </GameProvider>
-              </EggProvider>
+              <GameSettingsProvider>
+                <EggProvider>
+                  <GameProvider>
+                    <GestureHandlerRootView style={styles.gestureRoot}>
+                      <View style={styles.rootContainer}>
+                        <AppNavigation />
+                      </View>
+                    </GestureHandlerRootView>
+                  </GameProvider>
+                </EggProvider>
+              </GameSettingsProvider>
             </SocketProvider>
           </AuthProvider>
         </ToastProvider>
