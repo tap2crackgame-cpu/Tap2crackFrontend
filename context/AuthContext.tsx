@@ -27,28 +27,19 @@ type AuthStatus =
   | "ready"
   | "guest";
 
-export type PendingAdminAuth = {
-  pendingAuthToken: string;
-  email: string;
-  adminTokenSetup: boolean;
-};
-
 type AuthContextType = {
   authUser: User | null;
   token: string | null;
 
   authStatus: AuthStatus;
   authReady: boolean;
-  pendingAdminAuth: PendingAdminAuth | null;
 
   setAuthStatus: (status: AuthStatus) => void;
-  setPendingAdminAuth: (value: PendingAdminAuth | null) => void;
 
   loginWithGoogle: (tokens: {
     accessToken: string;
     refreshToken: string;
   }) => Promise<void>;
-  completeAdminTokenLogin: (adminToken: string) => Promise<void>;
   loginWithGuestToken: (guestToken: string) => Promise<boolean>;
   loginAsGuest: () => void;
   logout: () => Promise<void>;
@@ -81,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [authReady, setAuthReady] = useState(false);
-  const [pendingAdminAuth, setPendingAdminAuth] = useState<PendingAdminAuth | null>(null);
   const lastProfileFetchRef = useRef(0);
 
   /* ---------------- MAP USER ---------------- */
@@ -127,7 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     setAuthUser(null);
     setToken(null);
-    setPendingAdminAuth(null);
     setAuthStatus("unauthenticated");
     lastProfileFetchRef.current = 0;
     await AsyncStorage.multiRemove(["token", "refreshToken"]);
@@ -198,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const computeStatus = (user: User | null, token: string | null): AuthStatus => {
     if (!token || !user) return "unauthenticated";
     if (user.isGuest) return "guest";
+    if (user.isAdmin) return "ready";
     if (!user.phone) return "needs_phone";
     return "ready";
   };
@@ -274,44 +264,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthStatus("unauthenticated");
   }
 }, [fetchProfile]);
-
-  const completeAdminTokenLogin = useCallback(
-    async (adminToken: string) => {
-      if (!pendingAdminAuth) {
-        throw new Error("Admin session expired. Please sign in with Google again.");
-      }
-
-      const endpoint = pendingAdminAuth.adminTokenSetup
-        ? "/admin/setup-token"
-        : "/admin/verify-token";
-
-      const res = await fetch(`${getAuthApi()}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pendingAuthToken: pendingAdminAuth.pendingAuthToken,
-          adminToken,
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data.error || "Invalid token");
-      }
-
-      if (!data.accessToken || !data.refreshToken) {
-        throw new Error("Missing tokens from server");
-      }
-
-      setPendingAdminAuth(null);
-      await loginWithGoogle({
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      });
-    },
-    [pendingAdminAuth, loginWithGoogle]
-  );
 
   const loginWithGuestToken = useCallback(async (guestToken: string) => {
     await AsyncStorage.setItem("token", guestToken);
@@ -447,9 +399,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       authStatus,
       authReady,
-      pendingAdminAuth,
       loginWithGoogle,
-      completeAdminTokenLogin,
       loginWithGuestToken,
       loginAsGuest,
       logout,
@@ -458,7 +408,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthUser,
       setToken,
       setAuthStatus,
-      setPendingAdminAuth,
     }),
     [
       authUser,
@@ -467,10 +416,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken,
       authStatus,
       authReady,
-      pendingAdminAuth,
       setAuthStatus,
       loginWithGoogle,
-      completeAdminTokenLogin,
       loginWithGuestToken,
       loginAsGuest,
       logout,

@@ -99,6 +99,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
             </View>
             <Text style={styles.name}>{user?.name || "Guest"}</Text>
             <Text style={styles.email}>{user.email || "Playing as guest"}</Text>
+            {!user.isAdmin && (
             <TouchableOpacity
               style={styles.phoneRow}
               onPress={() => {
@@ -113,6 +114,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
                : "Tap to add phone number"}
               </Text>
             </TouchableOpacity>
+            )}
 
             {user.isGuest && (
               <TouchableOpacity

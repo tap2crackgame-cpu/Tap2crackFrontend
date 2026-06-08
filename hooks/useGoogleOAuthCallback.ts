@@ -8,14 +8,12 @@ import {
   getOAuthReturnCode,
   getOAuthReturnError,
 } from "@/utils/oauth";
-import type { PendingAdminAuth } from "@/context/AuthContext";
 
 type Tokens = { accessToken: string; refreshToken: string };
 
 export function useGoogleOAuthCallback(
   loginWithGoogle: (tokens: Tokens) => Promise<void>,
-  setAuthStatus: (status: "loading" | "unauthenticated") => void,
-  setPendingAdminAuth: (value: PendingAdminAuth | null) => void
+  setAuthStatus: (status: "loading" | "unauthenticated") => void
 ) {
   const processingRef = useRef(false);
 
@@ -72,16 +70,6 @@ export function useGoogleOAuthCallback(
           return;
         }
 
-        if (data.requiresAdminToken && data.pendingAuthToken) {
-          setPendingAdminAuth({
-            pendingAuthToken: data.pendingAuthToken,
-            email: String(data.user?.email ?? ""),
-            adminTokenSetup: !!data.adminTokenSetup,
-          });
-          setAuthStatus("unauthenticated");
-          return;
-        }
-
         if (!data.accessToken || !data.refreshToken) {
           showAlertAsToast("Google sign-in", "Missing tokens from server");
           setAuthStatus("unauthenticated");
@@ -104,5 +92,5 @@ export function useGoogleOAuthCallback(
         processingRef.current = false;
       }
     })();
-  }, [loginWithGoogle, setAuthStatus, setPendingAdminAuth]);
+  }, [loginWithGoogle, setAuthStatus]);
 }
