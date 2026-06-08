@@ -2,7 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/context/AuthContext";
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi, getApiConnectionHint } from "@/utils/api";
 import { toast } from "@/context/ToastContext";
 
 export default function PhonePrompt() {
@@ -20,7 +20,7 @@ export default function PhonePrompt() {
 
     try {
       if (token) {
-        const res = await fetch(`${AUTH_API}/update-phone`, {
+        const res = await fetch(`${getAuthApi()}/update-phone`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -51,13 +51,13 @@ export default function PhonePrompt() {
         });
         return;
       } else {
-        const res = await fetch(`${AUTH_API}/create-guest`, {
+        const res = await fetch(`${getAuthApi()}/create-guest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phone: cleaned }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.token) {
           const ok = await loginWithGuestToken(data.token);
@@ -70,14 +70,19 @@ export default function PhonePrompt() {
           return;
         }
 
-        const msg = data.error || "Guest registration failed";
+        const msg =
+          data.code === "REGISTERED_USER_EXISTS"
+            ? "User already exist please login with google"
+            : data.error || "Guest registration failed";
         setError(msg);
         toast.error(msg);
         setSubmitting(false);
       }
     } catch (err) {
       console.log("AUTH UPDATE ERROR:", err);
-      const msg = "Something went wrong. Please try again.";
+      const msg = __DEV__
+        ? getApiConnectionHint()
+        : "Something went wrong. Please try again.";
       setError(msg);
       toast.error(msg);
       setSubmitting(false);

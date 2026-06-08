@@ -15,6 +15,7 @@ import { EggProvider } from "@/context/eggContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGoogleOAuthCallback } from "@/hooks/useGoogleOAuthCallback";
 import AuthLoadingScreen from "@/components/AuthLoadingScreen";
+import AdminTokenModal from "@/components/AdminTokenModal";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -40,11 +41,19 @@ const queryClient = new QueryClient({
 });
 
 function AppNavigation() {
-  const { authStatus, authReady, loginWithGoogle, setAuthStatus } = useAuth();
+  const {
+    authStatus,
+    authReady,
+    loginWithGoogle,
+    setAuthStatus,
+    pendingAdminAuth,
+    setPendingAdminAuth,
+    completeAdminTokenLogin,
+  } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  useGoogleOAuthCallback(loginWithGoogle, setAuthStatus);
+  useGoogleOAuthCallback(loginWithGoogle, setAuthStatus, setPendingAdminAuth);
 
   useEffect(() => {
     if (!authReady) return;
@@ -112,6 +121,13 @@ function AppNavigation() {
           />
         </View>
       ) : null}
+      <AdminTokenModal
+        visible={!!pendingAdminAuth}
+        email={pendingAdminAuth?.email ?? ""}
+        setup={pendingAdminAuth?.adminTokenSetup ?? false}
+        onSubmit={completeAdminTokenLogin}
+        onCancel={() => setPendingAdminAuth(null)}
+      />
     </>
   );
 }

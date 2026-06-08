@@ -1,9 +1,9 @@
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi } from "@/utils/api";
 import type { LeaderboardEntry } from "@/types/game";
 import { normalizeWinner, type Winner } from "@/types/game";
 
 export async function fetchLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
-  const res = await fetch(`${AUTH_API}/leaderboard?limit=${limit}`);
+  const res = await fetch(`${getAuthApi()}/leaderboard?limit=${limit}`);
 
   if (!res.ok) {
     const text = await res.text();
@@ -22,7 +22,7 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardEntry[]> 
 }
 
 export async function fetchWinners(limit = 50): Promise<Winner[]> {
-  const res = await fetch(`${AUTH_API}/winners?limit=${limit}`);
+  const res = await fetch(`${getAuthApi()}/winners?limit=${limit}`);
 
   if (!res.ok) {
     throw new Error("Failed to fetch winners");

@@ -1,19 +1,21 @@
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi } from "@/utils/api";
 import { showAlertAsToast } from "@/context/ToastContext";
 import {
   clearOAuthQueryFromUrl,
   getOAuthReturnCode,
   getOAuthReturnError,
 } from "@/utils/oauth";
+import type { PendingAdminAuth } from "@/context/AuthContext";
 
 type Tokens = { accessToken: string; refreshToken: string };
 
 export function useGoogleOAuthCallback(
   loginWithGoogle: (tokens: Tokens) => Promise<void>,
-  setAuthStatus: (status: "loading" | "unauthenticated") => void
+  setAuthStatus: (status: "loading" | "unauthenticated") => void,
+  setPendingAdminAuth: (value: PendingAdminAuth | null) => void
 ) {
   const processingRef = useRef(false);
 
@@ -47,7 +49,7 @@ export function useGoogleOAuthCallback(
         const storedPhone = await AsyncStorage.getItem("temp_phone");
         const guestUserId = await AsyncStorage.getItem("temp_guest_user_id");
 
-        const res = await fetch(`${AUTH_API}/google`, {
+        const res = await fetch(`${getAuthApi()}/google`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -66,6 +68,16 @@ export function useGoogleOAuthCallback(
             data.hint ||
             `Google login failed (${res.status})`;
           showAlertAsToast("Google sign-in", msg);
+          setAuthStatus("unauthenticated");
+          return;
+        }
+
+        if (data.requiresAdminToken && data.pendingAuthToken) {
+          setPendingAdminAuth({
+            pendingAuthToken: data.pendingAuthToken,
+            email: String(data.user?.email ?? ""),
+            adminTokenSetup: !!data.adminTokenSetup,
+          });
           setAuthStatus("unauthenticated");
           return;
         }
@@ -92,5 +104,5 @@ export function useGoogleOAuthCallback(
         processingRef.current = false;
       }
     })();
-  }, [loginWithGoogle, setAuthStatus]);
+  }, [loginWithGoogle, setAuthStatus, setPendingAdminAuth]);
 }

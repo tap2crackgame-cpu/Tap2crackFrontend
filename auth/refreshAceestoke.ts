@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi } from "@/utils/api";
 
 
 
@@ -11,7 +11,7 @@ export const refreshAccessToken = async () => {
 
     if (!refreshToken) return null;
 
-    const res = await fetch(`${AUTH_API}/refresh`, {
+    const res = await fetch(`${getAuthApi()}/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),

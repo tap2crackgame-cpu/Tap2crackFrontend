@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, TextInput, Platform, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Shield, Check, Users, Trophy, Zap, DollarSign, Clock, Crown, Ban, Gift, Video, Search, Volume2, VolumeX } from "lucide-react-native";
+import { Shield, Check, Users, Trophy, Zap, DollarSign, Clock, Crown, Ban, Gift, Video, Search } from "lucide-react-native";
 import {
   fetchAdminAds,
   createAdminAd,
@@ -22,7 +22,7 @@ import {
   DbPayment,
   Price
 } from "@/types/game";
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi } from "@/utils/api";
 import { showAlertAsToast } from "@/context/ToastContext";
 
 type Tab = 'overview' | 'users' | 'winners' | 'payments' | 'Coupons' | 'prizes' | 'ads';
@@ -55,8 +55,7 @@ export default function AdminDashboard() {
   const [prizePhoneSearchDraft, setPrizePhoneSearchDraft] = useState('');
   const [prizePhoneSearch, setPrizePhoneSearch] = useState('');
   const [prizeSettleFilter, setPrizeSettleFilter] = useState<PrizeSettleFilter>('all');
-  const [togglingCrackSound, setTogglingCrackSound] = useState(false);
-  const BASE_URL = AUTH_API;
+  const BASE_URL = getAuthApi();
 
 
   const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
@@ -81,29 +80,6 @@ export default function AdminDashboard() {
       console.error("AdminStats: Network or Fetch Error:", err);
       throw err;
     }
-  },
-  staleTime: 10000,
-  enabled: !!token && !!authUser?.isAdmin && activeTab === 'overview',
-});
-
-const { data: gameSettings, isLoading: gameSettingsLoading } = useQuery<{
-  crackSoundEnabled: boolean;
-}>({
-  queryKey: ['admin-game-settings'],
-  queryFn: async () => {
-    const response = await fetch(`${BASE_URL}/admin/settings`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch game settings');
-    }
-    const data = await response.json();
-    return data.settings ?? { crackSoundEnabled: true };
   },
   staleTime: 10000,
   enabled: !!token && !!authUser?.isAdmin && activeTab === 'overview',
@@ -506,40 +482,8 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
     await queryClient.invalidateQueries({ queryKey: ['admin-prize-codes'] });
     await queryClient.invalidateQueries({ queryKey: ['admin-prizes'] });
     await queryClient.invalidateQueries({ queryKey: ['admin-ads'] });
-    await queryClient.invalidateQueries({ queryKey: ['admin-game-settings'] });
     setRefreshing(false);
   }, [queryClient]);
-
-  const handleToggleCrackSound = useCallback(async () => {
-    if (!token || togglingCrackSound) return;
-
-    const nextEnabled = !(gameSettings?.crackSoundEnabled ?? true);
-    setTogglingCrackSound(true);
-    try {
-      const response = await fetch(`${BASE_URL}/admin/settings/crack-sound`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ enabled: nextEnabled }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        showAlertAsToast('Error', data.error || 'Failed to update crack sound setting');
-        return;
-      }
-      await queryClient.invalidateQueries({ queryKey: ['admin-game-settings'] });
-      showAlertAsToast(
-        'Updated',
-        nextEnabled ? 'Crack sound is ON for all players.' : 'Crack sound is OFF for all players.'
-      );
-    } catch (err: any) {
-      showAlertAsToast('Error', err?.message || 'Failed to update crack sound setting');
-    } finally {
-      setTogglingCrackSound(false);
-    }
-  }, [token, togglingCrackSound, gameSettings?.crackSoundEnabled, queryClient, BASE_URL]);
 
   const handleToggleAdmin = useCallback(async (userId: string, currentAdmin: boolean) => {
     const action = currentAdmin ? 'remove admin from' : 'make admin';
@@ -686,42 +630,6 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
                   </View>
                 </View>
               )}
-
-              <Text style={styles.sectionTitle}>Game Controls</Text>
-              <View style={styles.settingsCard}>
-                <View style={styles.settingsCardHeader}>
-                  {gameSettings?.crackSoundEnabled !== false ? (
-                    <Volume2 size={22} color="#FFD700" />
-                  ) : (
-                    <VolumeX size={22} color="#FF6B6B" />
-                  )}
-                  <View style={styles.settingsCardCopy}>
-                    <Text style={styles.settingsCardTitle}>Egg crack sound</Text>
-                    <Text style={styles.settingsCardSub}>
-                      {gameSettings?.crackSoundEnabled !== false
-                        ? 'Players hear crack sfx while tapping.'
-                        : 'Crack sfx is muted for everyone.'}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.settingsToggleBtn,
-                    gameSettings?.crackSoundEnabled === false && styles.settingsToggleBtnOff,
-                    togglingCrackSound && styles.disabledBtn,
-                  ]}
-                  onPress={handleToggleCrackSound}
-                  disabled={togglingCrackSound || gameSettingsLoading}
-                >
-                  {togglingCrackSound ? (
-                    <ActivityIndicator size="small" color="#1a1a2e" />
-                  ) : (
-                    <Text style={styles.settingsToggleBtnText}>
-                      {gameSettings?.crackSoundEnabled !== false ? 'Turn OFF' : 'Turn ON'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
 
               <Text style={styles.sectionTitle}>Recent Users</Text>
               {users.slice(0, 5).map(u => (
@@ -1396,30 +1304,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 22, fontWeight: "bold" as const, color: "#FFF", marginTop: 8 },
   statLabel: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: "bold" as const, color: "#FFF", marginBottom: 12, marginTop: 8 },
-  settingsCard: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    gap: 14,
-  },
-  settingsCardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  settingsCardCopy: { flex: 1, gap: 4 },
-  settingsCardTitle: { fontSize: 15, fontWeight: "700" as const, color: "#FFF" },
-  settingsCardSub: { fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 18 },
-  settingsToggleBtn: {
-    alignSelf: "flex-start",
-    backgroundColor: "#FFD700",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    minWidth: 110,
-    alignItems: "center",
-  },
-  settingsToggleBtnOff: { backgroundColor: "#FF6B6B" },
-  settingsToggleBtnText: { color: "#1a1a2e", fontWeight: "700" as const, fontSize: 13 },
   userRow: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.05)", padding: 12, borderRadius: 12, marginBottom: 8, gap: 10 },
   userAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(78,205,196,0.2)", justifyContent: "center", alignItems: "center" },
   userAvatarText: { fontSize: 16, fontWeight: "bold" as const, color: "#4ECDC4" },

@@ -1,6 +1,7 @@
-import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Platform, TextInput } from "react-native";
+import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Platform, TextInput, Switch } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { LogOut, Trophy, Egg, Crown, Award, Shield, Gift, ShieldCheck, FileText, Heart, Coffee, X, ChevronRight } from "lucide-react-native";
+import { LogOut, Trophy, Egg, Crown, Award, Shield, Gift, ShieldCheck, FileText, Heart, Coffee, X, ChevronRight, Volume2 } from "lucide-react-native";
+import { useGameSettings } from "@/context/GameSettingsContext";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { showAlertAsToast } from "@/context/ToastContext";
@@ -11,7 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import  userUserProfile  from "@/app/useProfile";
 import { useUserPrizes } from "./usePrizes";
 import { type DbWinner, getUserSettlementLabel, isPrizeSettled } from "@/types/game";
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi } from "@/utils/api";
 import { resolveUserStats, formatStat } from "@/utils/userStats";
 import { useGoogleAuth } from "@/hooks/googleLogin";
 
@@ -30,6 +31,7 @@ export default function Tap2CrackProfile() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [crackHistoryOpen, setCrackHistoryOpen] = useState(false);
   const { crackPrizes, crackPrizesLoading, refetch: refetchCrackPrizes } = useUserPrizes();
+  const { crackSoundEnabled, setCrackSoundEnabled } = useGameSettings();
   const [phoneDraft, setPhoneDraft] = useState("");
 const [phoneEditorOpen, setPhoneEditorOpen] = useState(false);
 const [phoneSubmitting, setPhoneSubmitting] = useState(false);
@@ -184,6 +186,23 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
             </View>
           </View>
 
+          <View style={styles.section}>
+            <View style={styles.soundRow}>
+              <Volume2 size={16} color="#FFD700" />
+              <Text style={styles.soundRowLabel}>Crack sound</Text>
+              <Switch
+                style={styles.soundSwitch}
+                value={crackSoundEnabled}
+                onValueChange={(value) => {
+                  void setCrackSoundEnabled(value);
+                }}
+                trackColor={{ false: "rgba(255,255,255,0.15)", true: "rgba(255,215,0,0.35)" }}
+                thumbColor={crackSoundEnabled ? "#FFD700" : "#f4f3f4"}
+                ios_backgroundColor="rgba(255,255,255,0.15)"
+              />
+            </View>
+          </View>
+
           <Modal visible={crackHistoryOpen} animationType="slide" transparent onRequestClose={() => setCrackHistoryOpen(false)}>
             <View style={styles.modalBackdrop}>
               <Pressable style={styles.modalBackdrop} onPress={() => setCrackHistoryOpen(false)} />
@@ -308,7 +327,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
                     setPhoneSubmitting(true);
                     try {
                    if (token) {
-                   const res = await fetch(`${AUTH_API}/update-phone`, {
+                   const res = await fetch(`${getAuthApi()}/update-phone`, {
                    method: "POST",
                   headers: {
                   "Content-Type": "application/json",
@@ -328,7 +347,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
 
       // 2. If user is currently an un-registered Guest setup
       } else {
-        const res = await fetch(`${AUTH_API}/create-guest`, {
+        const res = await fetch(`${getAuthApi()}/create-guest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phone: cleaned }),
@@ -347,7 +366,11 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
             );
           }
         } else {
-          showAlertAsToast("Error", data.error || "Failed to link guest phone number");
+          const msg =
+            data.code === "REGISTERED_USER_EXISTS"
+              ? "User already exist please login with google"
+              : data.error || "Failed to link guest phone number";
+          showAlertAsToast("Error", msg);
         }
       }
     } catch (err) {
@@ -478,6 +501,24 @@ const styles = StyleSheet.create({
   prizesBtnText: { color: "#FFD700", fontWeight: "700" as const, fontSize: 14 },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 16, fontWeight: "bold" as const, color: "#FFF", marginBottom: 12 },
+  soundRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  soundRowLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "600" as const,
+  },
+  soundSwitch: {
+    transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }],
+  },
   statsGrid: { flexDirection: "row", gap: 10 },
   statCard: { flex: 1, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 14, padding: 16, alignItems: "center" },
   statCardTappable: {

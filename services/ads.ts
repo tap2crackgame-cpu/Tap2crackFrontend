@@ -1,4 +1,4 @@
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi } from "@/utils/api";
 
 export type PromoAdMediaType = "image" | "video";
 
@@ -28,7 +28,7 @@ async function adminFetch(
   if (init.body && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(`${AUTH_API}${path}`, { ...init, headers });
+  const res = await fetch(`${getAuthApi()}${path}`, { ...init, headers });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
   return json;
@@ -42,7 +42,7 @@ async function adminUpload(
 ) {
   const form = new FormData();
   form.append("file", file, filename);
-  const res = await fetch(`${AUTH_API}${path}`, {
+  const res = await fetch(`${getAuthApi()}${path}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: form,
@@ -129,7 +129,7 @@ export async function deleteAdminAd(token: string, id: string): Promise<void> {
 }
 
 export async function fetchActiveAds(): Promise<PromoAd[]> {
-  const res = await fetch(`${AUTH_API}/ads/active`);
+  const res = await fetch(`${getAuthApi()}/ads/active`);
   const json = await res.json().catch(() => ({}));
   if (!res.ok) return [];
   return json.ads ?? [];

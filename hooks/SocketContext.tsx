@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState, createContext, useContext } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/context/AuthContext";
-import { API_BASE } from "@/utils/api";
-
-const SOCKET_URL = API_BASE;
+import { getApiBase } from "@/utils/api";
 
 // 1. Create the Context
 const SocketContext = createContext<Socket | null>(null);
@@ -29,7 +27,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     console.log("🟢 Initializing shared socket for:", authUser.id);
 
-    const newSocket = io(SOCKET_URL, {
+    const newSocket = io(getApiBase(), {
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 800,

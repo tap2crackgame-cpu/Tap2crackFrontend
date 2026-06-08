@@ -1,8 +1,8 @@
-import { AUTH_API } from "@/utils/api";
+import { getAuthApi } from "@/utils/api";
 import type { DbWinner } from "@/types/game";
 
 export async function fetchUserPrizes(token: string): Promise<DbWinner[]> {
-  const res = await fetch(`${AUTH_API}/my`, {
+  const res = await fetch(`${getAuthApi()}/my`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 

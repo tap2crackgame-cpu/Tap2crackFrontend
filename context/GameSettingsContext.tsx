@@ -1,27 +1,31 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
   type ReactNode,
 } from "react";
-import { useSocket } from "@/hooks/SocketContext";
-import { AUTH_API } from "@/utils/api";
 import { applyCrackSoundEnabled } from "@/utils/sounds";
+import {
+  loadCrackSoundPreference,
+  saveCrackSoundPreference,
+} from "@/utils/crackSoundPreference";
 
 type GameSettingsContextValue = {
   crackSoundEnabled: boolean;
   settingsLoaded: boolean;
+  setCrackSoundEnabled: (enabled: boolean) => Promise<void>;
 };
 
 const GameSettingsContext = createContext<GameSettingsContextValue>({
   crackSoundEnabled: true,
   settingsLoaded: false,
+  setCrackSoundEnabled: async () => {},
 });
 
 export function GameSettingsProvider({ children }: { children: ReactNode }) {
-  const socket = useSocket();
-  const [crackSoundEnabled, setCrackSoundEnabled] = useState(true);
+  const [crackSoundEnabled, setCrackSoundEnabledState] = useState(true);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
@@ -31,16 +35,11 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`${AUTH_API}/settings/public`)
-      .then((res) => res.json().catch(() => ({})))
-      .then((json) => {
-        if (cancelled) return;
-        if (typeof json?.settings?.crackSoundEnabled === "boolean") {
-          setCrackSoundEnabled(json.settings.crackSoundEnabled);
-        }
-        setSettingsLoaded(true);
+    loadCrackSoundPreference()
+      .then((enabled) => {
+        if (!cancelled) setCrackSoundEnabledState(enabled);
       })
-      .catch(() => {
+      .finally(() => {
         if (!cancelled) setSettingsLoaded(true);
       });
 
@@ -49,26 +48,16 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!socket) return;
-
-    const applySettings = (payload: { crackSoundEnabled?: boolean }) => {
-      if (typeof payload?.crackSoundEnabled === "boolean") {
-        setCrackSoundEnabled(payload.crackSoundEnabled);
-      }
-    };
-
-    socket.on("game_settings", applySettings);
-    socket.on("game_settings_updated", applySettings);
-
-    return () => {
-      socket.off("game_settings", applySettings);
-      socket.off("game_settings_updated", applySettings);
-    };
-  }, [socket]);
+  const setCrackSoundEnabled = useCallback(async (enabled: boolean) => {
+    setCrackSoundEnabledState(enabled);
+    applyCrackSoundEnabled(enabled);
+    await saveCrackSoundPreference(enabled);
+  }, []);
 
   return (
-    <GameSettingsContext.Provider value={{ crackSoundEnabled, settingsLoaded }}>
+    <GameSettingsContext.Provider
+      value={{ crackSoundEnabled, settingsLoaded, setCrackSoundEnabled }}
+    >
       {children}
     </GameSettingsContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { API_BASE } from "@/utils/api";
+import { getApiBase } from "@/utils/api";
 
 export interface BankTransferDetails {
   accountNumber: string;
@@ -28,7 +28,7 @@ async function authedFetch(path: string, token: string, init: RequestInit = {}) 
   if (init.body && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
-  return fetch(`${API_BASE}${path}`, { ...init, headers });
+  return fetch(`${getApiBase()}${path}`, { ...init, headers });
 }
 
 export async function initiateCoffeeBankTransfer(
