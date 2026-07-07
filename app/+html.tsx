@@ -1,4 +1,11 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
+import {
+  OG_DESCRIPTION,
+  OG_TITLE,
+  SITE_DESCRIPTION,
+  SITE_KEYWORDS,
+  SITE_TITLE,
+} from '@/constants/seo';
 
 export default function Root({ children }: { children: React.ReactNode }) {
   return (
@@ -6,30 +13,18 @@ export default function Root({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <title>Tap2Crack  Egg - Tap, Crack, Win Money, Credits, Coupons</title>
-        <meta
-          name="description"
-          content="Tap2Crack is an egg tapping game where you tap, crack eggs, and win money, airtime, discount vouchers, coupons, and tickets. Egg-citing fun: crack smart, win big, and don't loose your chance!"
-        />
-        <meta
-          name="keywords"
-          content="tap2crack, Tap2Crack, game, egg game, tap game, crack game, win money, tap, crack, win, loose, lose, credit, airtime credit, discount, voucher, coupons, ticket, prizes, egg jokes, play to win"
-        />
+        <title>{SITE_TITLE}</title>
+        <meta name="description" content={SITE_DESCRIPTION} />
+        <meta name="keywords" content={SITE_KEYWORDS} />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href="https://www.tap2crackgame.com/" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://www.tap2crackgame.com/" />
-        <meta property="og:title" content="Tap2Crack - Tap, Crack, Win Money, Airtime And Discount Coupons" />
-        <meta
-          property="og:description"
-          content="Crack eggs to win money, airtime, coupons, vouchers."
-        />
+        <meta property="og:title" content={OG_TITLE} />
+        <meta property="og:description" content={OG_DESCRIPTION} />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Tap2Crack" />
-        <meta
-          name="twitter:description"
-          content="Tap, crack, and win money, credit, discount vouchers, coupons, and tickets."
-        />
+        <meta name="twitter:title" content={OG_TITLE} />
+        <meta name="twitter:description" content={OG_DESCRIPTION} />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
