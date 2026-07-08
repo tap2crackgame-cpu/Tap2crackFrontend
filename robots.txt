@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Sitemaps help search engines discover your pages faster.
+Sitemap: https://www.tap2crackgame.com/sitemap.xml
+
