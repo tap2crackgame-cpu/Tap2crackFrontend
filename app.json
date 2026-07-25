@@ -25,7 +25,7 @@
       "package": "app.rork.gbdg2xj2km9kn89nx3sqh"
     },
     "web": {
-      "favicon": "./assets/images/egg-favicon.png"
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [

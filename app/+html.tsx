@@ -6,6 +6,9 @@ export default function Root({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <title>Tap2Crack | Egg Cracking Game — Tap, Crack, Win Rewards, Coupons & Deals</title>
         <meta
           name="description"
