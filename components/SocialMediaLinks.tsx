@@ -62,17 +62,12 @@ export default React.memo(SocialMediaLinks);
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 12,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === "web" ? 10 : 8,
-    zIndex: 30,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   button: {
     width: BUTTON_SIZE,

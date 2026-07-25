@@ -903,9 +903,9 @@ export default function Tap2CrackGame() {
             </View>
           )}
 
+          <SocialMediaLinks />
           </View>
         </ScrollView>
-        <SocialMediaLinks />
         {currentEgg?.isCooldown && 
         currentEgg.cooldownEndTime && (
           <CooldownTimer 
@@ -998,7 +998,7 @@ const styles = StyleSheet.create({
   navBtnSm: { paddingVertical: 6, paddingHorizontal: 10, gap: 4 },
   navText: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: "500" },
   navTextSm: { fontSize: 10 },
-  scroll: { paddingBottom: 56 },
+  scroll: { paddingBottom: 24 },
   gameMainColumn: { width: "100%", alignSelf: "center" },
   desktopRailLeft: {
     position: "absolute",
