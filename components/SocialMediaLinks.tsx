@@ -22,6 +22,8 @@ const SOCIAL_LINKS = [
   },
 ] as const;
 
+const BUTTON_SIZE = 28;
+
 function SocialMediaLinks() {
   const openLink = useCallback(async (url: string) => {
     try {
@@ -44,12 +46,12 @@ function SocialMediaLinks() {
         <TouchableOpacity
           key={item.key}
           style={styles.button}
-          activeOpacity={0.8}
+          activeOpacity={0.75}
           accessibilityRole="link"
           accessibilityLabel={`Open Tap2Crack on ${item.label}`}
           onPress={() => openLink(item.url)}
         >
-          <Image source={item.icon} style={styles.icon} resizeMode="contain" />
+          <Image source={item.icon} style={styles.icon} resizeMode="cover" />
         </TouchableOpacity>
       ))}
     </View>
@@ -60,26 +62,26 @@ export default React.memo(SocialMediaLinks);
 
 const styles = StyleSheet.create({
   container: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 18,
-    paddingTop: 8,
-    paddingBottom: 4,
+    gap: 12,
+    paddingTop: 6,
+    paddingBottom: Platform.OS === "web" ? 10 : 8,
+    zIndex: 30,
   },
   button: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_SIZE / 2,
     overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   icon: {
-    width: 28,
-    height: 28,
+    width: "100%",
+    height: "100%",
   },
 });
