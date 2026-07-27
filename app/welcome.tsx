@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View, Text, TouchableOpacity, Animated, ActivityIndicator, useWindowDimensions, ScrollView, Platform } from "react-native";
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Egg, Zap, Trophy, Users, Phone } from "lucide-react-native";
+import { Egg, Zap, Trophy, Users, Info } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
-import BengzFooter from "@/components/BengzFooter";
+import SocialMediaLinks from "@/components/SocialMediaLinks";
+import AppInfoSheet from "@/components/AppInfoSheet";
 import { useGoogleAuth } from "@/hooks/googleLogin";
 import AuthLoadingScreen from "@/components/AuthLoadingScreen";
 import { isOAuthReturnPending } from "@/utils/oauth";
@@ -18,6 +19,7 @@ export default function Tap2CrackWelcome() {
   const { login, loading: googleLoading } = useGoogleAuth();
 
   const [guestLoading, setGuestLoading] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(50)).current;
@@ -187,6 +189,23 @@ export default function Tap2CrackWelcome() {
   const featureRowLayout = lockViewport || width < 420;
   const featureIconSize = veryCompact ? 16 : width < 400 ? 18 : 20;
   const featureIconBox = veryCompact ? 34 : isCompact ? 38 : 44;
+
+  const welcomeFooter = (
+    <View style={[styles.welcomeFooter, veryCompact && styles.welcomeFooterCompact]}>
+      <TouchableOpacity
+        style={styles.infoBtn}
+        onPress={() => setInfoOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="About Tap2Crack"
+      >
+        <Info size={22} color="#FFD700" />
+      </TouchableOpacity>
+      <View style={styles.socialCenter}>
+        <SocialMediaLinks />
+      </View>
+      <View style={styles.footerSpacer} />
+    </View>
+  );
 
   const mainContent = (
     <Animated.View
@@ -359,7 +378,7 @@ export default function Tap2CrackWelcome() {
             ) : null}
             <View style={styles.viewportBody}>{mainContent}</View>
             <View style={[styles.viewportFooter, veryCompact && styles.viewportFooterCompact]}>
-              <BengzFooter />
+              {welcomeFooter}
             </View>
           </View>
         ) : (
@@ -370,7 +389,7 @@ export default function Tap2CrackWelcome() {
                 styles.scrollContent,
                 {
                   paddingTop: topContentPad,
-                  paddingBottom: insets.bottom + 88,
+                  paddingBottom: insets.bottom + 72,
                 },
               ]}
               keyboardShouldPersistTaps="handled"
@@ -381,11 +400,12 @@ export default function Tap2CrackWelcome() {
               </View>
               {mainContent}
             </ScrollView>
-            <View style={[styles.bengzFooterWrap, { paddingBottom: insets.bottom }]}>
-              <BengzFooter />
+            <View style={[styles.welcomeFooterWrap, { paddingBottom: insets.bottom }]}>
+              {welcomeFooter}
             </View>
           </>
         )}
+        <AppInfoSheet visible={infoOpen} onClose={() => setInfoOpen(false)} />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -475,5 +495,32 @@ const styles = StyleSheet.create({
   guestTextCompact: { fontSize: 15 },
   disabledBtn: { opacity: 0.6 },
   terms: { fontSize: 12, color: "rgba(255,255,255,0.4)", textAlign: "center", lineHeight: 18, paddingHorizontal: 8 },
-  bengzFooterWrap: { position: "absolute", bottom: 0, left: 0, right: 0 },
+  welcomeFooterWrap: { position: "absolute", bottom: 0, left: 0, right: 0 },
+  welcomeFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 16,
+    paddingTop: 4,
+  },
+  welcomeFooterCompact: {
+    paddingTop: 0,
+  },
+  infoBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,215,0,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.3)",
+  },
+  socialCenter: {
+    flex: 1,
+    alignItems: "center",
+  },
+  footerSpacer: {
+    width: 40,
+  },
 });

@@ -19,7 +19,6 @@ import AdModal from "@/components/AdModal";
 import PaymentModal from "@/components/paymentModal";
 import TapFeedback from "@/components/TapFeedback";
 import PowerUpBackground from "@/components/PowerUpBackground";
-import SocialMediaLinks from "@/components/SocialMediaLinks";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
 import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
@@ -903,7 +902,6 @@ export default function Tap2CrackGame() {
             </View>
           )}
 
-          <SocialMediaLinks />
           </View>
         </ScrollView>
         {currentEgg?.isCooldown && 
