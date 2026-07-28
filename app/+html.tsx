@@ -9,10 +9,10 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <link rel="icon" href="/favicon.ico" />
         <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" href="/favicon.png" />
-        <title>Tap2Crack | Egg Cracking Game — Tap, Crack, Win Rewards, Coupons & Deals</title>
+        <title>Tap2Crack - Tap, Crack, &amp; Win Real Rewards!</title>
         <meta
           name="description"
-          content="Tap2Crack is a free online egg cracking game — tap to crack, hatch, and collect lucky eggs to win money, airtime, coupons, vouchers, and daily rewards. Play the addictive egg tapper on mobile or browser: crack mystery and golden eggs, climb the leaderboard, enjoy egg jokes, and shop discount deals on Nigeria's fun reward platform."
+          content="Tap2Crack is the most egg-citing real-time multiplayer reward game online. Tap eggs, crack your way to victory, and win airtime, cash, coupons, movie tickets, pizza, and merch. Join thousands of egg hunters — no payment required to win!"
         />
         <meta
           name="keywords"

@@ -6,6 +6,21 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://www.tap2crackgame.com/how-to-play</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.tap2crackgame.com/faq</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.tap2crackgame.com/sponsor</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>https://www.tap2crackgame.com/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

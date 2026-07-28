@@ -30,6 +30,17 @@ function isAuthEntryPath(pathname: string) {
   return pathname === "/" || pathname.endsWith("/index") || isWelcomePath(pathname);
 }
 
+function isPublicPath(pathname: string) {
+  return (
+    isAuthEntryPath(pathname) ||
+    pathname.endsWith("/faq") ||
+    pathname.endsWith("/how-to-play") ||
+    pathname.endsWith("/terms") ||
+    pathname.endsWith("/privacy-policy") ||
+    pathname.endsWith("/sponsor")
+  );
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -57,8 +68,8 @@ function AppNavigation() {
     if (authStatus === "loading") return;
 
     if (authStatus === "unauthenticated") {
-      if (!isWelcomePath(pathname)) {
-        router.replace("/welcome");
+      if (!isPublicPath(pathname)) {
+        router.replace("/");
       }
       return;
     }
@@ -98,6 +109,8 @@ function AppNavigation() {
         <Stack.Screen name="profile" options={{ title: "\u{1F464} Your Profile" }} />
         <Stack.Screen name="egglookup" options={{ title: "Egg Lookup" }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+        <Stack.Screen name="how-to-play" options={{ title: "How to Play" }} />
+        <Stack.Screen name="faq" options={{ title: "FAQ" }} />
         <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
         <Stack.Screen name="terms" options={{ title: "Terms & Conditions" }} />
         <Stack.Screen name="sponsor" options={{ title: "Be a Sponsor" }} />
