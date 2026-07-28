@@ -37,7 +37,7 @@ const SECTIONS = [
   {
     title: "What You Can Win",
     body:
-      "Prizes depend on the egg you play:\n\n• Airtime — mobile credit sent to winners.\n• Cash — real money rewards.\n• Coupons — discount codes from partner brands.\n• Sponsor gifts — special sponsored prizes.\n\nNormal, Silver, Golden, Company, and Business eggs can offer different reward types and values. Check the prize indicator on each egg before you play. Signed-in users can view prize codes and settlement status on the Prizes page.",
+      "Prizes depend on the egg you play:\n\n• Airtime — mobile credit sent to winners.\n• Coupons — discount codes from partner brands.\n• Sponsor gifts — special sponsored prizes.\n\nNormal, Silver, Golden, Company, and Business eggs can offer different reward types and values. Check the prize indicator on each egg before you play. Signed-in users can view prize codes and settlement status on the Prizes page.",
   },
   {
     title: "Tips",
