@@ -1,0 +1,2 @@
+# Tap2Crack does not currently use programmatic advertising.
+# This file prevents /ads.txt from returning the SPA HTML shell.

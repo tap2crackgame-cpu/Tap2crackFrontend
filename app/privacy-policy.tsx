@@ -2,10 +2,12 @@ import { StyleSheet, View, Text, ScrollView, SafeAreaView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Shield } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
+import SeoHead from "@/components/SeoHead";
 
 export default function PrivacyPolicyScreen() {
   return (
     <SafeAreaView style={styles.container}>
+      <SeoHead page="privacy" />
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>

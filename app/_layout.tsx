@@ -15,6 +15,7 @@ import { EggProvider } from "@/context/eggContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGoogleOAuthCallback } from "@/hooks/useGoogleOAuthCallback";
 import AuthLoadingScreen from "@/components/AuthLoadingScreen";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -155,6 +156,7 @@ export default function Tap2CrackRootLayout() {
                   <GameProvider>
                     <GestureHandlerRootView style={styles.gestureRoot}>
                       <View style={styles.rootContainer}>
+                        <GoogleAnalytics />
                         <AppNavigation />
                       </View>
                     </GestureHandlerRootView>

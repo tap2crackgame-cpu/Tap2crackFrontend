@@ -1,7 +1,7 @@
 export const LANDING_HERO = {
   title: "Tap2Crack",
   tagline: "Tap, Crack, & Win Real Rewards!",
-  subtitle: "Tap, crack, and win money, credit, vouchers & coupons.",
+  subtitle: "Tap, crack, and win airtime, credit, vouchers, coupons, and real rewards.",
 };
 
 export const CRACKING_SECTION = {

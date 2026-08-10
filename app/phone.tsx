@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthApi, getApiConnectionHint } from "@/utils/api";
 import { toast } from "@/context/ToastContext";
+import SeoHead from "@/components/SeoHead";
 
 export default function PhonePrompt() {
   const { token, completePhoneSetup, loginWithGuestToken, setAuthStatus } = useAuth();
@@ -99,7 +100,16 @@ export default function PhonePrompt() {
 
 
   return (
-    <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.container}>
+    <>
+      <SeoHead
+        custom={{
+          title: "Tap2Crack – Phone Verification",
+          description: "Verify your phone number for Tap2Crack.",
+          path: "/phone",
+          robots: "noindex, nofollow",
+        }}
+      />
+      <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.content}>
         <Text style={styles.title}>Tap2Crack</Text>
         <Text style={styles.subtitle}>Insert your phone number for EGG-cellent prizes.</Text>
@@ -149,6 +159,7 @@ export default function PhonePrompt() {
         </View>
       </KeyboardAvoidingView>
     </LinearGradient>
+    </>
   );
 }
 

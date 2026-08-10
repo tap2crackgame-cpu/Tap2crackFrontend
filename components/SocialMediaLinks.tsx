@@ -51,7 +51,12 @@ function SocialMediaLinks() {
           accessibilityLabel={`Open Tap2Crack on ${item.label}`}
           onPress={() => openLink(item.url)}
         >
-          <Image source={item.icon} style={styles.icon} resizeMode="cover" />
+          <Image
+            source={item.icon}
+            style={styles.icon}
+            resizeMode="cover"
+            accessibilityLabel={`${item.label} icon`}
+          />
         </TouchableOpacity>
       ))}
     </View>

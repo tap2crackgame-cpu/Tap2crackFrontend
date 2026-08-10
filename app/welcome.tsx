@@ -7,6 +7,7 @@ import AuthLoadingScreen from "@/components/AuthLoadingScreen";
 import { isOAuthReturnPending } from "@/utils/oauth";
 import WelcomeLandingPage from "@/components/landing/WelcomeLandingPage";
 import AppInfoSheet from "@/components/AppInfoSheet";
+import SeoHead from "@/components/SeoHead";
 
 export default function Tap2CrackWelcome() {
   const { loginAsGuest, authReady, authStatus } = useAuth();
@@ -49,6 +50,7 @@ export default function Tap2CrackWelcome() {
 
   return (
     <View style={styles.root}>
+      <SeoHead page="home" />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <WelcomeLandingPage
           onGooglePress={onGooglePress}

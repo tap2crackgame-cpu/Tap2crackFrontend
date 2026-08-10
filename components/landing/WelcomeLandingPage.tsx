@@ -22,17 +22,22 @@ import {
   Info,
 } from "lucide-react-native";
 import SocialMediaLinks from "@/components/SocialMediaLinks";
+import SemanticHeading from "@/components/SemanticHeading";
 import { useWinnersQuery } from "@/hooks/useWinnersQuery";
 import {
   displayWinnerName,
   formatWinnerPrizeLabel,
 } from "@/types/game";
 import {
+  HOW_IT_WORKS_STEPS,
+  LANDING_FAQ_PREVIEW,
+  SUPPORT_EMAIL,
+} from "@/constants/seo";
+import {
   LANDING_HERO,
   EGG_TYPES,
   WINNERS_SECTION,
   PRIZES_SECTION,
-  WINNER_QUOTES,
   COMING_SOON_SECTION,
   FOOTER_LINKS,
 } from "@/constants/landingCopy";
@@ -47,9 +52,12 @@ type Props = {
 
 function SectionTitle({ children, compact }: { children: string; compact?: boolean }) {
   return (
-    <Text style={[styles.sectionTitle, compact && styles.sectionTitleCompact]}>
+    <SemanticHeading
+      level={2}
+      style={[styles.sectionTitle, compact && styles.sectionTitleCompact]}
+    >
       {children}
-    </Text>
+    </SemanticHeading>
   );
 }
 
@@ -82,6 +90,17 @@ function LandingHeader({ compact }: { compact?: boolean }) {
   );
 }
 
+function formatWinnerDate(dateStr?: string) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function WinnersCarousel({ compact }: { compact?: boolean }) {
   const { data: winners = [], isLoading } = useWinnersQuery(12);
   const { width } = useWindowDimensions();
@@ -96,20 +115,23 @@ function WinnersCarousel({ compact }: { compact?: boolean }) {
     );
   }
 
-  const cards =
-    winners.length > 0
-      ? winners.slice(0, 10).map((w) => ({
-          id: w.id,
-          name: displayWinnerName(w.user_name),
-          prize: formatWinnerPrizeLabel(w),
-          egg: w.egg_type ?? "normal",
-        }))
-      : [
-          { id: "1", name: "Ada C.", prize: "₦500 Airtime", egg: "golden" },
-          { id: "2", name: "Tunde M.", prize: "KFC Coupon", egg: "business" },
-          { id: "3", name: "Chioma O.", prize: "Movie Ticket", egg: "company" },
-          { id: "4", name: "Samuel K.", prize: "Tap2Crack Hoodie", egg: "silver" },
-        ];
+  if (winners.length === 0) {
+    return (
+      <View style={styles.carouselEmpty}>
+        <Text style={styles.carouselEmptyText}>
+          Recent winners appear here as players crack eggs. Updated regularly.
+        </Text>
+      </View>
+    );
+  }
+
+  const cards = winners.slice(0, 10).map((w) => ({
+    id: w.id,
+    name: displayWinnerName(w.user_name),
+    prize: formatWinnerPrizeLabel(w),
+    egg: w.egg_type ?? "normal",
+    date: formatWinnerDate(w.won_at),
+  }));
 
   const eggColor = (type: string) => {
     switch (type) {
@@ -145,8 +167,11 @@ function WinnersCarousel({ compact }: { compact?: boolean }) {
             </Text>
           </View>
           <Text style={styles.winnerCardPrize} numberOfLines={2}>
-            {card.prize}
+            Reward: {card.prize}
           </Text>
+          {card.date ? (
+            <Text style={styles.winnerCardDate}>{card.date}</Text>
+          ) : null}
         </View>
       ))}
     </ScrollView>
@@ -211,9 +236,12 @@ export default function WelcomeLandingPage({
                 <Egg size={56} color="#FFD700" strokeWidth={1.5} />
               </View>
             )}
-            <Text style={[styles.heroTitle, isWide && styles.heroTitleWide, isMobile && styles.heroTitleMobile]}>
+            <SemanticHeading
+              level={1}
+              style={[styles.heroTitle, isWide && styles.heroTitleWide, isMobile && styles.heroTitleMobile]}
+            >
               {LANDING_HERO.tagline}
-            </Text>
+            </SemanticHeading>
             <Text style={[styles.heroSubtitle, isMobile && styles.heroSubtitleMobile]}>
               {LANDING_HERO.subtitle}
             </Text>
@@ -264,8 +292,25 @@ export default function WelcomeLandingPage({
             </View>
           </View>
 
-          {/* Egg types grid only */}
+          {/* How it works */}
           <View style={[styles.section, isMobile && styles.sectionMobile]}>
+            <SectionTitle compact={isMobile}>How Tap2Crack Works</SectionTitle>
+            <View style={styles.stepsGrid}>
+              {HOW_IT_WORKS_STEPS.map((step, index) => (
+                <View key={step.title} style={styles.stepCard}>
+                  <Text style={styles.stepNumber}>{index + 1}</Text>
+                  <SemanticHeading level={3} style={styles.stepTitle}>
+                    {step.title}
+                  </SemanticHeading>
+                  <Text style={styles.stepBody}>{step.body}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Egg types */}
+          <View style={[styles.section, isMobile && styles.sectionMobile]}>
+            <SectionTitle compact={isMobile}>Crack Eggs and Discover Rewards</SectionTitle>
             <View style={[styles.eggGrid, { gap: gridGap }]}>
               {EGG_TYPES.map((egg) => (
                 <View
@@ -283,9 +328,9 @@ export default function WelcomeLandingPage({
                     <View style={[styles.eggShape, { backgroundColor: egg.color }]}>
                       <Text style={styles.eggCardChicken}>{egg.chicken}</Text>
                     </View>
-                    <Text style={styles.eggCardName} numberOfLines={2}>
+                    <SemanticHeading level={3} style={styles.eggCardName} numberOfLines={2}>
                       {egg.name}
-                    </Text>
+                    </SemanticHeading>
                   </View>
                   <Text style={[styles.eggCardCopy, isMobile && styles.eggCardCopyMobile]}>
                     {egg.copy}
@@ -297,14 +342,15 @@ export default function WelcomeLandingPage({
 
           {/* Recent winners */}
           <View style={[styles.section, isMobile && styles.sectionMobile]}>
-            <SectionTitle compact={isMobile}>{WINNERS_SECTION.title}</SectionTitle>
+            <SectionTitle compact={isMobile}>Recent Winners</SectionTitle>
             {!isMobile && <SectionBody>{WINNERS_SECTION.subtitle}</SectionBody>}
+            <Text style={styles.updatedNote}>Updated regularly from live game results.</Text>
             <WinnersCarousel compact={isMobile} />
           </View>
 
           {/* Prizes */}
           <View style={[styles.section, isMobile && styles.sectionMobile]}>
-            <SectionTitle compact={isMobile}>{PRIZES_SECTION.title}</SectionTitle>
+            <SectionTitle compact={isMobile}>What Can You Win?</SectionTitle>
             <View style={[styles.prizeGrid, { gap: gridGap }]}>
               {PRIZES_SECTION.groups.map((group) => (
                 <View
@@ -326,16 +372,38 @@ export default function WelcomeLandingPage({
             </View>
           </View>
 
-          {/* Testimonials */}
+          {/* FAQ preview */}
           <View style={[styles.section, isMobile && styles.sectionMobile]}>
-            <SectionTitle compact={isMobile}>Word from winners</SectionTitle>
-            <View style={styles.quoteGrid}>
-              {WINNER_QUOTES.map((quote, i) => (
-                <View key={i} style={[styles.quoteCard, isMobile && styles.quoteCardMobile]}>
-                  <Text style={[styles.quoteText, isMobile && styles.quoteTextMobile]}>{quote}</Text>
+            <SectionTitle compact={isMobile}>Frequently Asked Questions</SectionTitle>
+            <View style={styles.faqGrid}>
+              {LANDING_FAQ_PREVIEW.map((item) => (
+                <View key={item.question} style={styles.faqCard}>
+                  <SemanticHeading level={3} style={styles.faqQuestion}>
+                    {item.question}
+                  </SemanticHeading>
+                  <Text style={styles.faqAnswer}>{item.answer}</Text>
                 </View>
               ))}
             </View>
+            <Link href="/faq" style={styles.faqLink}>
+              View all FAQ
+            </Link>
+          </View>
+
+          {/* Trust */}
+          <View style={[styles.section, styles.trustSection, isMobile && styles.sectionMobile]}>
+            <SectionTitle compact={isMobile}>Why Play Tap2Crack?</SectionTitle>
+            <Text style={styles.trustBody}>
+              Tap2Crack is a free-to-play multiplayer reward game. Play on mobile or desktop,
+              win real prizes when you crack eggs, and review our rules and privacy policy anytime.
+            </Text>
+            <View style={styles.trustLinks}>
+              <Link href="/how-to-play" style={styles.trustLink}>How to Play</Link>
+              <Link href="/terms" style={styles.trustLink}>Terms</Link>
+              <Link href="/privacy-policy" style={styles.trustLink}>Privacy</Link>
+              <Link href="/sponsor" style={styles.trustLink}>Contact</Link>
+            </View>
+            <Text style={styles.trustEmail}>Support: {SUPPORT_EMAIL}</Text>
           </View>
 
           {/* Coming soon */}
@@ -593,6 +661,60 @@ const styles = StyleSheet.create({
   winnerEggDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   winnerCardName: { fontSize: 14, fontWeight: "600", color: "#FFF", flex: 1 },
   winnerCardPrize: { fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 17 },
+  winnerCardDate: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 6 },
+  carouselEmpty: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  carouselEmptyText: { fontSize: 13, lineHeight: 20, color: "rgba(255,255,255,0.55)", textAlign: "center" },
+  updatedNote: { fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 10 },
+  stepsGrid: { gap: 10 },
+  stepCard: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  stepNumber: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFD700",
+    marginBottom: 6,
+  },
+  stepTitle: { fontSize: 15, fontWeight: "600", color: "#FFF", marginBottom: 6 },
+  stepBody: { fontSize: 13, lineHeight: 20, color: "rgba(255,255,255,0.65)" },
+  faqGrid: { gap: 10 },
+  faqCard: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  faqQuestion: { fontSize: 14, fontWeight: "600", color: "#FFF", marginBottom: 6 },
+  faqAnswer: { fontSize: 13, lineHeight: 20, color: "rgba(255,255,255,0.65)" },
+  faqLink: {
+    alignSelf: "flex-start",
+    marginTop: 12,
+    fontSize: 13,
+    color: "#FFD700",
+    fontWeight: "600",
+  },
+  trustSection: {
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  trustBody: { fontSize: 14, lineHeight: 22, color: "rgba(255,255,255,0.65)", marginBottom: 12 },
+  trustLinks: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 10 },
+  trustLink: { fontSize: 13, color: "#FFD700", fontWeight: "600" },
+  trustEmail: { fontSize: 12, color: "rgba(255,255,255,0.45)" },
   prizeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -610,19 +732,6 @@ const styles = StyleSheet.create({
   },
   prizeCardTitle: { fontSize: 13, fontWeight: "600", color: "#FFF", marginBottom: 5 },
   prizeCardItems: { fontSize: 11, lineHeight: 16, color: "rgba(255,255,255,0.55)" },
-  quoteGrid: { gap: 10 },
-  quoteCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  quoteCardMobile: {
-    padding: 12,
-  },
-  quoteText: { fontSize: 13, lineHeight: 20, color: "rgba(255,255,255,0.72)" },
-  quoteTextMobile: { fontSize: 12, lineHeight: 18 },
   comingSection: {
     backgroundColor: "rgba(255,255,255,0.03)",
     borderRadius: 14,

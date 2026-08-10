@@ -1,357 +1,224 @@
-/** Comma-separated SEO keywords for meta tags (deduplicated). */
-export const SITE_KEYWORDS = [
-  "tap2crack",
-  "Tap2Crack",
-  "tap2",
-  "tap 2 crack",
-  "egg game",
-  "egg cracking game",
-  "egg clicker game",
-  "egg hatching game",
-  "egg collecting game",
-  "egg adventure game",
-  "egg puzzle game",
-  "egg challenge",
-  "egg rewards",
-  "lucky egg",
-  "virtual egg",
-  "golden egg",
-  "mystery egg",
-  "egg hunt",
-  "egg arcade",
-  "egg simulator",
-  "egg quest",
-  "egg launcher",
-  "egg runner",
-  "egg match game",
-  "egg tapping game",
-  "egg smash game",
-  "egg breaker",
-  "egg collector",
-  "egg kingdom",
-  "egg treasure",
-  "egg jackpot",
-  "egg bonus",
-  "egg rewards game",
-  "online egg game",
-  "free egg game",
-  "multiplayer egg game",
-  "mobile egg game",
-  "browser egg game",
-  "fun egg game",
-  "addictive egg game",
-  "casual egg game",
-  "family egg game",
-  "kids egg game",
-  "easter egg game",
-  "egg race",
-  "egg mystery",
-  "egg challenge online",
-  "hatch eggs",
-  "collect eggs",
-  "win rewards",
-  "surprise eggs",
-  "egg rewards platform",
-  "virtual pet eggs",
-  "egg farming",
-  "egg incubator",
-  "egg strategy game",
-  "egg leaderboard",
-  "egg competitions",
-  "egg missions",
-  "egg levels",
-  "egg upgrades",
-  "egg achievements",
-  "egg prizes",
-  "egg collection",
-  "reward game",
-  "lucky game",
-  "prize game",
-  "arcade rewards",
-  "online rewards",
-  "daily rewards",
-  "bonus rewards",
-  "fun challenges",
-  "casual gaming",
-  "free online games",
-  "game rewards",
-  "digital rewards",
-  "play and win",
-  "entertainment platform",
-  "browser entertainment",
-  "mobile entertainment",
-  "gaming platform",
-  "virtual rewards",
-  "click and win",
-  "collection game",
-  "progression game",
-  "discount store",
-  "online discount store",
-  "discount shopping",
-  "bargain store",
-  "cheap deals",
-  "daily deals",
-  "flash sales",
-  "clearance sale",
-  "clearance store",
-  "outlet store",
-  "low price store",
-  "budget shopping",
-  "affordable shopping",
-  "discount marketplace",
-  "shopping deals",
-  "best discounts",
-  "online bargains",
-  "coupon deals",
-  "promo deals",
-  "special offers",
-  "exclusive discounts",
-  "save money",
-  "shopping savings",
-  "value shopping",
-  "affordable products",
-  "cheap products",
-  "sale items",
-  "discount products",
-  "discount retailer",
-  "online retailer",
-  "wholesale deals",
-  "retail discounts",
-  "shopping promotions",
-  "top deals",
-  "best offers",
-  "markdown sale",
-  "discounted items",
-  "seasonal sale",
-  "bulk discounts",
-  "clearance discounts",
-  "limited time offers",
-  "online savings",
-  "budget marketplace",
-  "shopping outlet",
-  "cheap electronics",
-  "discounted electronics",
-  "cheap fashion",
-  "discounted fashion",
-  "home essentials sale",
-  "kitchen deals",
-  "furniture discounts",
-  "beauty deals",
-  "grocery discounts",
-  "travel deals",
-  "tech deals",
-  "gadget deals",
-  "office supply discounts",
-  "online coupons",
-  "voucher codes",
-  "promo codes",
-  "cashback offers",
-  "shopping rewards",
-  "loyalty rewards",
-  "bargain hunter",
-  "smart shopping",
-  "price reduction",
-  "low cost shopping",
-  "best value deals",
-  "affordable lifestyle",
-  "mega sale",
-  "super sale",
-  "weekend sale",
-  "holiday sale",
-  "black friday deals",
-  "cyber monday deals",
-  "clearance event",
-  "special promotion",
-  "online store",
-  "ecommerce deals",
-  "shopping website",
-  "best prices",
-  "price comparison",
-  "cheap online shopping",
-  "affordable online store",
-  "discount center",
-  "savings hub",
-  "value store",
-  "discount warehouse",
-  "deal finder",
-  "bargain marketplace",
-  "smart buyer",
-  "money saving tips",
-  "everyday discounts",
-  "daily bargains",
-  "unbeatable prices",
-  "lowest prices",
-  "quality discounts",
-  "trusted discount store",
-  "deal of the day",
-  "shopping specials",
-  "discount offers",
-  "bulk savings",
-  "online marketplace",
-  "shopping club",
-  "clearance marketplace",
-  "discounted brands",
-  "premium products discount",
-  "family savings",
-  "budget deals",
-  "affordable brands",
-  "economical shopping",
-  "tap to crack",
-  "tap and crack",
-  "crack the egg",
-  "egg tap game",
-  "tap egg challenge",
-  "crack eggs online",
-  "egg breaker game",
-  "egg smashing game",
-  "egg clicker",
-  "egg tapper",
-  "egg cracking challenge",
-  "lucky egg crack",
-  "surprise egg crack",
-  "egg reward game",
-  "crack and win",
-  "tap to win",
-  "crack for rewards",
-  "crack mystery egg",
-  "golden egg crack",
-  "egg popping game",
-  "cracking eggs for prizes",
-  "instant win egg game",
-  "tap crack collect",
-  "egg cracking fun",
-  "free egg cracking game",
-  "online egg cracking",
-  "egg crack rewards",
-  "daily egg crack",
-  "egg jackpot game",
-  "lucky egg tap",
-  "crack the golden egg",
-  "egg hunt rewards",
-  "crack eggs and win",
-  "virtual egg crack",
-  "tap crack surprise",
-  "egg bonus game",
-  "interactive egg game",
-  "addictive egg crack game",
-  "one tap egg game",
-  "mobile egg cracking game",
-  "egg cracking rewards",
-  "lucky reward eggs",
-  "egg tapping rewards",
-  "crack and collect",
-  "crack and earn",
-  "fun egg challenge",
-  "egg cracking adventure",
-  "egg jokes",
-  "funny egg jokes",
-  "egg puns",
-  "egg humor",
-  "egg comedy",
-  "egg one liners",
-  "egg memes",
-  "egg laugh jokes",
-  "egg cracking jokes",
-  "eggcellent jokes",
-  "eggstra funny",
-  "egg pun collection",
-  "easter egg jokes",
-  "yolk jokes",
-  "egg themed jokes",
-  "shell jokes",
-  "sunny side up jokes",
-  "breakfast jokes",
-  "chicken and egg jokes",
-  "family egg jokes",
-  "kids egg jokes",
-  "clean egg jokes",
-  "hilarious egg jokes",
-  "funny yolk jokes",
-  "egg wordplay",
-  "egg giggles",
-  "egg laugh challenge",
-  "egg joke of the day",
-  "cheesy egg jokes",
-  "egg humor collection",
-  "egg pun game",
-  "cracking good jokes",
-  "egg meme jokes",
-  "viral egg jokes",
-  "egg funnies",
-  "joke eggs",
-  "egg entertainment",
-  "joke challenge",
-  "daily egg laugh",
-  "funny egg quotes",
-  "egg gags",
-  "yolk humor",
-  "egg laughter",
-  "egg jokes for kids",
-  "family friendly jokes",
-  "egg pun memes",
-  "funny breakfast jokes",
-  "egg comic humor",
-  "egg joke website",
-  "virtual egg rewards",
-  "lucky egg game",
-  "surprise egg game",
-  "reward game online",
-  "play egg game online",
-  "free rewards game",
-  "instant reward game",
-  "egg bonus rewards",
-  "crack eggs and earn",
-  "clicker egg game",
-  "lucky rewards",
-  "daily rewards game",
-  "mystery egg rewards",
-  "virtual prizes",
-  "entertainment rewards",
-  "gaming rewards",
-  "family game",
-  "reward challenges",
-  "online entertainment",
-  "egg adventure",
-  "egg quests",
-  "puzzle egg game",
-  "egg treasure hunt",
-  "daily challenges",
-  "lucky draw game",
-  "instant win game",
-  "reward collection",
-  "online fun",
-  "egg website SEO",
-  "egg game website",
-  "egg entertainment site",
-  "fun reward platform",
-  "egg themed website",
-  "viral egg game",
-  "trending egg game",
-  "egg content",
-  "egg community",
-  "egg fun zone",
-  "yokes",
-  "discount",
-  "shop",
-  "Netflix",
-  "honey",
-  "win money",
-  "airtime",
-  "coupons",
-  "vouchers",
-  "tickets",
-  "prizes",
-  "play to win",
-].join(", ");
+export const SITE_URL = "https://www.tap2crackgame.com";
+
+export const SITE_NAME = "Tap2Crack";
+
+export const SITE_TITLE = "Tap2Crack – Crack Eggs & Win Real Rewards";
 
 export const SITE_DESCRIPTION =
-  "Tap2Crack is a free online egg cracking game — tap to crack, hatch, and collect lucky eggs to win money, airtime, coupons, vouchers, and daily rewards. Play the addictive egg tapper on mobile or browser: crack mystery and golden eggs, climb the leaderboard, enjoy egg jokes, and shop discount deals on Nigeria's fun reward platform.";
+  "Play Tap2Crack free online. Tap and crack eggs in real time with other players to win airtime, coupons, vouchers, and real rewards.";
 
-export const SITE_TITLE =
-  "Tap2Crack | Egg Cracking Game — Tap, Crack, Win Rewards, Coupons & Deals";
+export const SITE_KEYWORDS = [
+  "Tap2Crack",
+  "tap to crack",
+  "crack eggs",
+  "egg game",
+  "win rewards",
+  "win prizes",
+  "real rewards",
+  "free to play",
+  "multiplayer game",
+  "airtime",
+  "coupons",
+  "mobile credit",
+  "casual game",
+  "online game",
+].join(", ");
 
-export const OG_TITLE =
-  "Tap2Crack — Egg Tapping Game | Crack Eggs, Win Money, Airtime & Discount Coupons";
+export const OG_IMAGE = `${SITE_URL}/favicon.png`;
 
-export const OG_DESCRIPTION =
-  "Play the free egg clicker game online. Tap to crack eggs, win rewards, collect prizes, enjoy egg jokes, and unlock discount coupons — multiplayer egg adventure on mobile and browser.";
+export const OG_TITLE = SITE_TITLE;
+
+export const OG_DESCRIPTION = SITE_DESCRIPTION;
+
+export const SUPPORT_EMAIL = "tap2crackgame@gmail.com";
+
+export type PageSeo = {
+  title: string;
+  description: string;
+  path: string;
+  robots?: string;
+};
+
+export const PAGE_SEO: Record<string, PageSeo> = {
+  home: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    path: "/",
+  },
+  howToPlay: {
+    title: "How Tap2Crack Works – Play & Win Rewards",
+    description:
+      "Learn how to play Tap2Crack: choose an egg, tap with other players, and discover rewards when you win a round.",
+    path: "/how-to-play",
+  },
+  faq: {
+    title: "Tap2Crack FAQ – Rewards, Gameplay & Support",
+    description:
+      "Answers about Tap2Crack gameplay, prizes, free play, mobile support, reward delivery, and how to contact support.",
+    path: "/faq",
+  },
+  sponsor: {
+    title: "Contact Tap2Crack – Sponsorship & Support",
+    description:
+      "Contact Tap2Crack for sponsorship opportunities, partnerships, or player support.",
+    path: "/sponsor",
+  },
+  terms: {
+    title: "Tap2Crack Terms & Conditions",
+    description: "Read the Tap2Crack terms and conditions for gameplay, accounts, and rewards.",
+    path: "/terms",
+  },
+  privacy: {
+    title: "Tap2Crack Privacy Policy",
+    description: "Learn how Tap2Crack collects, uses, and protects your information.",
+    path: "/privacy-policy",
+  },
+  notFound: {
+    title: "Page Not Found – Tap2Crack",
+    description: "The page you requested could not be found on Tap2Crack.",
+    path: "/404",
+    robots: "noindex, follow",
+  },
+};
+
+export const HOW_IT_WORKS_STEPS = [
+  {
+    title: "Choose an egg",
+    body: "Pick a live egg room — Normal, Silver, Gold, Business, Company, or Pure — and see what reward type is available.",
+  },
+  {
+    title: "Tap and crack",
+    body: "Tap together with other players in real time. Every tap adds to the shared crack progress bar until the egg breaks.",
+  },
+  {
+    title: "Discover your reward",
+    body: "If you land the final cracking tap, you win that round's prize. Signed-in players can track codes and status in their profile.",
+  },
+] as const;
+
+export const FAQ_ITEMS = [
+  {
+    question: "What is Tap2Crack?",
+    answer:
+      "Tap2Crack is a free real-time multiplayer egg cracking game. Players tap shared eggs together, and the player who makes the final tap can win rewards such as airtime, coupons, and sponsor gifts.",
+  },
+  {
+    question: "How does Tap2Crack work?",
+    answer:
+      "Join a live egg room, tap to add cracks, and compete with other players. When the egg reaches 100%, the last tap wins the round prize according to the game's rules.",
+  },
+  {
+    question: "How do I play?",
+    answer:
+      "Sign in with Google or play as a guest, open the game, choose an egg room, and start tapping. Optional power-ups can boost your tap strength but are not required to play.",
+  },
+  {
+    question: "What can I win?",
+    answer:
+      "Rewards can include mobile airtime, discount coupons, movie tickets, food deals, merch, and other sponsor gifts depending on the egg you play.",
+  },
+  {
+    question: "How are rewards delivered?",
+    answer:
+      "Delivery depends on the prize type. Airtime and coupon codes are shown to winners in-app. Signed-in users can view prize details and settlement status on the Prizes page.",
+  },
+  {
+    question: "Is Tap2Crack free to play?",
+    answer:
+      "Yes. No payment is required to play or win. Power-ups are optional and not required to participate.",
+  },
+  {
+    question: "Can I play on mobile?",
+    answer:
+      "Yes. Tap2Crack works in mobile browsers and supports touch gameplay on phones and tablets.",
+  },
+  {
+    question: "Who can play?",
+    answer:
+      "Tap2Crack is intended for users who can create an account or play as a guest and follow the platform terms. Some rewards may be region-specific.",
+  },
+  {
+    question: "What happens after I win?",
+    answer:
+      "Winners see their prize in the win popup. Signed-in users can review prize codes and fulfillment status from their profile and Prizes page.",
+  },
+  {
+    question: "How do I contact Tap2Crack support?",
+    answer: `Email ${SUPPORT_EMAIL} or visit the Contact page for sponsorship and support requests.`,
+  },
+] as const;
+
+export const LANDING_FAQ_PREVIEW = FAQ_ITEMS.slice(0, 4);
+
+export function pageUrl(path: string) {
+  if (!path || path === "/") return `${SITE_URL}/`;
+  return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export function buildWebsiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: pageUrl("/"),
+    description: SITE_DESCRIPTION,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${pageUrl("/")}?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+export function buildOrganizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: pageUrl("/"),
+    email: SUPPORT_EMAIL,
+    sameAs: [
+      "https://www.instagram.com/tap2crackgame/",
+      "https://www.tiktok.com/@tap2crack",
+      "https://x.com/Tap2Crack_",
+    ],
+  };
+}
+
+export function buildSoftwareApplicationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE_NAME,
+    applicationCategory: "GameApplication",
+    operatingSystem: "Web, iOS, Android",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    description: SITE_DESCRIPTION,
+    url: pageUrl("/"),
+  };
+}
+
+export function buildFaqJsonLd(
+  items: ReadonlyArray<{ question: string; answer: string }> = FAQ_ITEMS
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+}
+
+export function buildJsonLdScripts() {
+  return [buildWebsiteJsonLd(), buildOrganizationJsonLd(), buildSoftwareApplicationJsonLd()];
+}

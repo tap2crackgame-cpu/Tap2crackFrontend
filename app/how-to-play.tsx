@@ -2,6 +2,8 @@ import { StyleSheet, View, Text, ScrollView, SafeAreaView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BookOpen } from "lucide-react-native";
 import { Link } from "expo-router";
+import SeoHead from "@/components/SeoHead";
+import SemanticHeading from "@/components/SemanticHeading";
 
 const STEPS = [
   {
@@ -49,13 +51,14 @@ const PRIZE_TYPES = [
 export default function HowToPlayScreen() {
   return (
     <SafeAreaView style={styles.container}>
+      <SeoHead page="howToPlay" />
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.iconWrap}>
               <BookOpen size={28} color="#FFD700" />
             </View>
-            <Text style={styles.title}>How to Play Tap2Crack</Text>
+            <SemanticHeading level={1} style={styles.title}>How to Play Tap2Crack</SemanticHeading>
             <Text style={styles.subtitle}>
               Tap. Crack. Win. Repeat. It's egg-stremely simple — and egg-stremely addictive. 🥚
             </Text>
