@@ -217,14 +217,18 @@ export default function WelcomeLandingPage({
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[
+        styles.scrollContent,
+        isMobile && styles.scrollContentMobile,
+      ]}
+      keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={Platform.OS !== "web"}
     >
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
         <View style={[styles.page, { maxWidth: contentMax, paddingHorizontal: pagePad }]}>
           <LandingHeader compact={isMobile} />
 
-          {/* Hero */}
+          {/* Hero — compact entry block, content-driven height (no viewport stretch) */}
           <View style={[styles.hero, isMobile && styles.heroMobile]}>
             <View style={[styles.heroStack, isMobile && styles.heroStackMobile]}>
               {!isMobile ? (
@@ -481,14 +485,21 @@ export default function WelcomeLandingPage({
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
-  gradient: { flex: 1, minHeight: "100%" as unknown as number },
+  scroll: { flex: 1, backgroundColor: "#1a1a2e" },
+  scrollContent: {
+    paddingBottom: 24,
+  },
+  scrollContentMobile: {
+    paddingBottom: 16,
+  },
+  gradient: {
+    width: "100%",
+  },
   page: {
     width: "100%",
     alignSelf: "center",
-    paddingTop: 6,
-    paddingBottom: 28,
+    paddingTop: 4,
+    paddingBottom: 24,
   },
   dashboardHeader: {
     flexDirection: "row",
@@ -540,17 +551,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#4ADE80",
   },
   liveBadgeText: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
-  hero: { alignItems: "center", marginBottom: 28, width: "100%" },
-  heroMobile: { marginBottom: 22 },
+  hero: {
+    width: "100%",
+    marginBottom: 24,
+  },
+  heroMobile: {
+    marginBottom: 18,
+  },
   heroStack: {
     width: "100%",
     alignItems: "center",
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   heroStackMobile: {
-    gap: 6,
-    marginBottom: 12,
+    alignItems: "stretch",
+    gap: 8,
+    marginBottom: 10,
   },
   heroEggGlow: {
     width: 120,
@@ -567,6 +584,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,215,0,0.08)",
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
   },
   heroEggGlowVeryCompact: {
     width: 56,
@@ -582,6 +600,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
     letterSpacing: -0.3,
     width: "100%",
+    alignSelf: "stretch",
   },
   heroTitleWide: { fontSize: 34 },
   heroTitleMobile: {
@@ -642,14 +661,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 6,
     paddingVertical: 7,
+    justifyContent: "center",
   },
   heroFeatureText: {
     fontSize: 11,
     color: "rgba(255,255,255,0.7)",
     fontWeight: "500",
     flexShrink: 1,
+    textAlign: "center",
   },
-  ctaBlock: { width: "100%", gap: 8 },
+  ctaBlock: { width: "100%", gap: 8, alignSelf: "stretch" },
   ctaBlockMobile: { gap: 8 },
   googleBtn: { borderRadius: 12, overflow: "hidden" },
   googleBtnInner: { paddingVertical: 13, alignItems: "center" },

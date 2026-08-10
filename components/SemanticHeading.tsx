@@ -15,7 +15,12 @@ export default function SemanticHeading({ level, children, style, ...rest }: Pro
       ? {
           ...(flatStyle as object),
           marginTop: 0,
+          marginBottom: (flatStyle as { marginBottom?: number })?.marginBottom ?? 0,
           paddingTop: 0,
+          paddingBottom: 0,
+          display: "block",
+          position: "relative",
+          flexShrink: 0,
         }
       : flatStyle;
 

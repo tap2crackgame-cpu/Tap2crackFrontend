@@ -75,6 +75,14 @@ export default function Root({ children }: { children: React.ReactNode }) {
                 user-select: text !important;
                 touch-action: auto;
               }
+              h1, h2, h3, h4 {
+                margin: 0;
+                padding: 0;
+                display: block;
+                box-sizing: border-box;
+                font-family: inherit;
+                line-height: normal;
+              }
               #seo-noscript {
                 display: none;
               }
