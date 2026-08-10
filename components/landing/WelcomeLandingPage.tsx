@@ -187,8 +187,9 @@ export default function WelcomeLandingPage({
 }: Props) {
   const { width } = useWindowDimensions();
   const isMobile = width < 640;
+  const isVeryCompact = width < 380;
   const isWide = width >= 768;
-  const pagePad = isMobile ? 20 : 16;
+  const pagePad = isVeryCompact ? 16 : isMobile ? 18 : 16;
   const contentMax = Math.min(920, width);
   const gridInnerWidth = contentMax - pagePad * 2;
   const eggCols = width >= 640 ? 3 : 2;
@@ -225,43 +226,75 @@ export default function WelcomeLandingPage({
 
           {/* Hero */}
           <View style={[styles.hero, isMobile && styles.heroMobile]}>
-            {!isMobile ? (
-              <Animated.View style={{ transform: [{ translateY: bounce }] }}>
-                <View style={styles.heroEggGlow}>
-                  <Egg size={isWide ? 96 : 72} color="#FFD700" strokeWidth={1.5} />
+            <View style={[styles.heroStack, isMobile && styles.heroStackMobile]}>
+              {!isMobile ? (
+                <Animated.View style={{ transform: [{ translateY: bounce }] }}>
+                  <View style={styles.heroEggGlow}>
+                    <Egg size={isWide ? 96 : 72} color="#FFD700" strokeWidth={1.5} />
+                  </View>
+                </Animated.View>
+              ) : (
+                <View
+                  style={[
+                    styles.heroEggGlowMobile,
+                    isVeryCompact && styles.heroEggGlowVeryCompact,
+                  ]}
+                >
+                  <Egg size={isVeryCompact ? 44 : 50} color="#FFD700" strokeWidth={1.5} />
                 </View>
-              </Animated.View>
-            ) : (
-              <View style={styles.heroEggGlowMobile}>
-                <Egg size={56} color="#FFD700" strokeWidth={1.5} />
-              </View>
-            )}
-            <SemanticHeading
-              level={1}
-              style={[styles.heroTitle, isWide && styles.heroTitleWide, isMobile && styles.heroTitleMobile]}
-            >
-              {LANDING_HERO.tagline}
-            </SemanticHeading>
-            <Text style={[styles.heroSubtitle, isMobile && styles.heroSubtitleMobile]}>
-              {LANDING_HERO.subtitle}
-            </Text>
+              )}
 
-            <View style={[styles.heroFeatures, isMobile && styles.heroFeaturesMobile]}>
-              <View style={styles.heroFeature}>
-                <Zap size={16} color="#FF6B6B" />
-                <Text style={styles.heroFeatureText}>Multiplayer</Text>
-              </View>
-              <View style={styles.heroFeature}>
-                <Trophy size={16} color="#FFD700" />
-                <Text style={styles.heroFeatureText}>Real prizes</Text>
-              </View>
-              <View style={styles.heroFeature}>
-                <Users size={16} color="#4ECDC4" />
-                <Text style={styles.heroFeatureText}>Play together</Text>
+              <SemanticHeading
+                level={1}
+                style={[
+                  styles.heroTitle,
+                  isWide && styles.heroTitleWide,
+                  isMobile && styles.heroTitleMobile,
+                  isVeryCompact && styles.heroTitleVeryCompact,
+                ]}
+              >
+                {LANDING_HERO.tagline}
+              </SemanticHeading>
+
+              <Text
+                style={[
+                  styles.heroSubtitle,
+                  isMobile && styles.heroSubtitleMobile,
+                  isVeryCompact && styles.heroSubtitleVeryCompact,
+                ]}
+              >
+                {LANDING_HERO.subtitle}
+              </Text>
+
+              <View
+                style={[
+                  styles.heroFeatures,
+                  isMobile && styles.heroFeaturesMobile,
+                  isVeryCompact && styles.heroFeaturesVeryCompact,
+                ]}
+              >
+                <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
+                  <Zap size={isVeryCompact ? 14 : 15} color="#FF6B6B" />
+                  <Text style={styles.heroFeatureText} numberOfLines={1}>
+                    Multiplayer
+                  </Text>
+                </View>
+                <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
+                  <Trophy size={isVeryCompact ? 14 : 15} color="#FFD700" />
+                  <Text style={styles.heroFeatureText} numberOfLines={1}>
+                    Real prizes
+                  </Text>
+                </View>
+                <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
+                  <Users size={isVeryCompact ? 14 : 15} color="#4ECDC4" />
+                  <Text style={styles.heroFeatureText} numberOfLines={1}>
+                    Play together
+                  </Text>
+                </View>
               </View>
             </View>
 
-            <View style={styles.ctaBlock}>
+            <View style={[styles.ctaBlock, isMobile && styles.ctaBlockMobile]}>
               <TouchableOpacity
                 style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
                 onPress={onGooglePress}
@@ -286,7 +319,7 @@ export default function WelcomeLandingPage({
                   <Text style={styles.guestBtnText}>Play as Guest</Text>
                 )}
               </TouchableOpacity>
-              <Text style={styles.ctaNote}>
+              <Text style={[styles.ctaNote, isMobile && styles.ctaNoteMobile]}>
                 No payment required to win. Power-ups are optional.
               </Text>
             </View>
@@ -454,21 +487,21 @@ const styles = StyleSheet.create({
   page: {
     width: "100%",
     alignSelf: "center",
-    paddingTop: 8,
-    paddingBottom: 32,
+    paddingTop: 6,
+    paddingBottom: 28,
   },
   dashboardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
-    marginBottom: 8,
+    paddingVertical: 8,
+    marginBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
   dashboardHeaderCompact: {
-    paddingVertical: 8,
-    marginBottom: 12,
+    paddingVertical: 6,
+    marginBottom: 4,
   },
   dashboardBrand: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
   dashboardAvatar: {
@@ -507,8 +540,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#4ADE80",
   },
   liveBadgeText: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
-  hero: { alignItems: "center", marginBottom: 32 },
-  heroMobile: { marginBottom: 28 },
+  hero: { alignItems: "center", marginBottom: 28, width: "100%" },
+  heroMobile: { marginBottom: 22 },
+  heroStack: {
+    width: "100%",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 14,
+  },
+  heroStackMobile: {
+    gap: 6,
+    marginBottom: 12,
+  },
   heroEggGlow: {
     width: 120,
     height: 120,
@@ -516,69 +559,103 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,215,0,0.08)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
   heroEggGlowMobile: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: "rgba(255,215,0,0.08)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+  },
+  heroEggGlowVeryCompact: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   heroTitle: {
     fontSize: 28,
     fontWeight: "700",
     color: "#FFF",
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 0,
+    marginTop: 0,
     letterSpacing: -0.3,
+    width: "100%",
   },
   heroTitleWide: { fontSize: 34 },
-  heroTitleMobile: { fontSize: 22, lineHeight: 28, paddingHorizontal: 4 },
+  heroTitleMobile: {
+    fontSize: 21,
+    lineHeight: 26,
+    paddingHorizontal: 0,
+  },
+  heroTitleVeryCompact: {
+    fontSize: 19,
+    lineHeight: 24,
+  },
   heroSubtitle: {
     fontSize: 15,
     color: "rgba(255,255,255,0.65)",
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 20,
-    paddingHorizontal: 8,
+    marginBottom: 0,
+    paddingHorizontal: 4,
+    width: "100%",
   },
   heroSubtitleMobile: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  heroSubtitleVeryCompact: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   heroFeatures: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: 8,
-    marginBottom: 24,
+    width: "100%",
   },
   heroFeaturesMobile: {
+    flexWrap: "nowrap",
+    justifyContent: "space-between",
     gap: 6,
-    marginBottom: 20,
+  },
+  heroFeaturesVeryCompact: {
+    gap: 4,
   },
   heroFeature: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    gap: 5,
     backgroundColor: "rgba(255,255,255,0.05)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
   },
-  heroFeatureText: { fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
-  ctaBlock: { width: "100%", gap: 10 },
+  heroFeatureMobile: {
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+  },
+  heroFeatureText: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "500",
+    flexShrink: 1,
+  },
+  ctaBlock: { width: "100%", gap: 8 },
+  ctaBlockMobile: { gap: 8 },
   googleBtn: { borderRadius: 12, overflow: "hidden" },
-  googleBtnInner: { paddingVertical: 14, alignItems: "center" },
+  googleBtnInner: { paddingVertical: 13, alignItems: "center" },
   googleBtnText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
   guestBtn: {
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
@@ -588,24 +665,29 @@ const styles = StyleSheet.create({
   guestBtnText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
   btnDisabled: { opacity: 0.6 },
   ctaNote: {
-    fontSize: 12,
+    fontSize: 11,
     color: "rgba(255,255,255,0.4)",
     textAlign: "center",
-    lineHeight: 18,
-    marginTop: 4,
+    lineHeight: 16,
+    marginTop: 2,
   },
-  section: { marginBottom: 32 },
-  sectionMobile: { marginBottom: 28 },
+  ctaNoteMobile: {
+    fontSize: 10,
+    lineHeight: 15,
+  },
+  section: { marginBottom: 26 },
+  sectionMobile: { marginBottom: 22 },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#FFF",
-    marginBottom: 12,
+    marginBottom: 10,
+    marginTop: 0,
     letterSpacing: -0.2,
   },
   sectionTitleCompact: {
-    fontSize: 17,
-    marginBottom: 10,
+    fontSize: 16,
+    marginBottom: 8,
   },
   sectionBody: {
     fontSize: 14,

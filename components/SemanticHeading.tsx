@@ -10,9 +10,17 @@ type Props = TextProps & {
 
 export default function SemanticHeading({ level, children, style, ...rest }: Props) {
   const flatStyle = StyleSheet.flatten([styles.base, style]);
+  const webStyle =
+    Platform.OS === "web"
+      ? {
+          ...(flatStyle as object),
+          marginTop: 0,
+          paddingTop: 0,
+        }
+      : flatStyle;
 
   if (Platform.OS === "web") {
-    return React.createElement(`h${level}`, { style: flatStyle, ...rest }, children);
+    return React.createElement(`h${level}`, { style: webStyle, ...rest }, children);
   }
 
   return (
