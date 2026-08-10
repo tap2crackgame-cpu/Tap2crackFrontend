@@ -82,6 +82,9 @@ export default function Root({ children }: { children: React.ReactNode }) {
                 box-sizing: border-box;
                 font-family: inherit;
                 line-height: normal;
+                flex-grow: 0;
+                flex-shrink: 0;
+                min-height: 0;
               }
               #seo-noscript {
                 display: none;

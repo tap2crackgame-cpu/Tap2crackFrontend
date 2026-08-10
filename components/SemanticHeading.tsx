@@ -10,26 +10,14 @@ type Props = TextProps & {
 
 export default function SemanticHeading({ level, children, style, ...rest }: Props) {
   const flatStyle = StyleSheet.flatten([styles.base, style]);
-  const webStyle =
-    Platform.OS === "web"
-      ? {
-          ...(flatStyle as object),
-          marginTop: 0,
-          marginBottom: (flatStyle as { marginBottom?: number })?.marginBottom ?? 0,
-          paddingTop: 0,
-          paddingBottom: 0,
-          display: "block",
-          position: "relative",
-          flexShrink: 0,
-        }
-      : flatStyle;
 
-  if (Platform.OS === "web") {
-    return React.createElement(`h${level}`, { style: webStyle, ...rest }, children);
-  }
+  const a11yProps =
+    Platform.OS === "web"
+      ? ({ accessibilityRole: "header" as const, "aria-level": level } as const)
+      : ({ accessibilityRole: "header" as const, accessibilityLevel: level } as const);
 
   return (
-    <Text accessibilityRole="header" style={flatStyle} {...rest}>
+    <Text style={flatStyle} {...a11yProps} {...rest}>
       {children}
     </Text>
   );

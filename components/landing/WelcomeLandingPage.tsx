@@ -185,10 +185,11 @@ export default function WelcomeLandingPage({
   guestLoading,
   onInfoPress,
 }: Props) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isMobile = width < 640;
   const isVeryCompact = width < 380;
   const isWide = width >= 768;
+  const lockEntryViewport = isMobile || height < 760;
   const pagePad = isVeryCompact ? 16 : isMobile ? 18 : 16;
   const contentMax = Math.min(920, width);
   const gridInnerWidth = contentMax - pagePad * 2;
@@ -220,17 +221,30 @@ export default function WelcomeLandingPage({
       contentContainerStyle={[
         styles.scrollContent,
         isMobile && styles.scrollContentMobile,
+        Platform.OS === "web" && styles.scrollContentWeb,
       ]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={Platform.OS !== "web"}
     >
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <View style={[styles.page, { maxWidth: contentMax, paddingHorizontal: pagePad }]}>
-          <LandingHeader compact={isMobile} />
+        <View
+          style={[
+            styles.page,
+            isMobile && styles.pageMobile,
+            { maxWidth: contentMax, paddingHorizontal: pagePad },
+          ]}
+        >
+          {!isMobile ? <LandingHeader /> : null}
 
-          {/* Hero — compact entry block, content-driven height (no viewport stretch) */}
+          {/* Hero — compact entry block at top; SEO sections scroll below */}
           <View style={[styles.hero, isMobile && styles.heroMobile]}>
-            <View style={[styles.heroStack, isMobile && styles.heroStackMobile]}>
+            <View
+              style={[
+                styles.heroStack,
+                isMobile && styles.heroStackMobile,
+                lockEntryViewport && styles.heroStackEntry,
+              ]}
+            >
               {!isMobile ? (
                 <Animated.View style={{ transform: [{ translateY: bounce }] }}>
                   <View style={styles.heroEggGlow}>
@@ -487,19 +501,29 @@ export default function WelcomeLandingPage({
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: "#1a1a2e" },
   scrollContent: {
+    flexGrow: 0,
     paddingBottom: 24,
   },
   scrollContentMobile: {
     paddingBottom: 16,
   },
+  scrollContentWeb: {
+    flexGrow: 0,
+    alignItems: "stretch",
+  },
   gradient: {
     width: "100%",
+    flexGrow: 0,
+    alignSelf: "stretch",
   },
   page: {
     width: "100%",
     alignSelf: "center",
     paddingTop: 4,
     paddingBottom: 24,
+  },
+  pageMobile: {
+    paddingTop: 8,
   },
   dashboardHeader: {
     flexDirection: "row",
@@ -565,9 +589,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   heroStackMobile: {
-    alignItems: "stretch",
-    gap: 8,
-    marginBottom: 10,
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  heroStackEntry: {
+    flexGrow: 0,
+    flexShrink: 0,
   },
   heroEggGlow: {
     width: 120,
@@ -607,6 +635,8 @@ const styles = StyleSheet.create({
     fontSize: 21,
     lineHeight: 26,
     paddingHorizontal: 0,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   heroTitleVeryCompact: {
     fontSize: 19,
