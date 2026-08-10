@@ -89,6 +89,58 @@ export default function Root({ children }: { children: React.ReactNode }) {
               #seo-noscript {
                 display: none;
               }
+
+              /* Landing page — responsive grids & gaming entry panel (web) */
+              .landing-egg-grid,
+              .landing-prize-grid {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                justify-content: space-between !important;
+                align-content: flex-start !important;
+                width: 100% !important;
+                row-gap: 8px;
+              }
+              .landing-egg-card,
+              .landing-prize-card {
+                box-sizing: border-box !important;
+                flex-grow: 0 !important;
+                flex-shrink: 0 !important;
+                width: 48% !important;
+                max-width: 48% !important;
+                flex-basis: 48% !important;
+              }
+              .landing-entry-panel {
+                box-sizing: border-box;
+                background: linear-gradient(180deg, rgba(255,215,0,0.06) 0%, rgba(15,52,96,0.4) 100%);
+                border: 1px solid rgba(255,215,0,0.22);
+                border-radius: 16px;
+                box-shadow: 0 0 24px rgba(255,215,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
+              }
+              .landing-hero-title {
+                text-shadow: 0 0 20px rgba(255,215,0,0.35), 0 2px 8px rgba(0,0,0,0.5);
+              }
+              @media (min-width: 640px) {
+                .landing-egg-grid,
+                .landing-prize-grid {
+                  row-gap: 12px;
+                }
+              }
+              @media (min-width: 768px) {
+                .landing-egg-card {
+                  width: 31.5% !important;
+                  max-width: 31.5% !important;
+                  flex-basis: 31.5% !important;
+                }
+              }
+              @media (max-width: 359px) {
+                .landing-egg-card,
+                .landing-prize-card {
+                  width: 48% !important;
+                  max-width: 48% !important;
+                  flex-basis: 48% !important;
+                }
+              }
             `,
           }}
         />

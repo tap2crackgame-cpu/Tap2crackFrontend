@@ -23,6 +23,7 @@ import {
 } from "lucide-react-native";
 import SocialMediaLinks from "@/components/SocialMediaLinks";
 import SemanticHeading from "@/components/SemanticHeading";
+import { useLandingLayout } from "@/hooks/useLandingLayout";
 import { useWinnersQuery } from "@/hooks/useWinnersQuery";
 import {
   displayWinnerName,
@@ -63,6 +64,10 @@ function SectionTitle({ children, compact }: { children: string; compact?: boole
 
 function SectionBody({ children }: { children: string }) {
   return <Text style={styles.sectionBody}>{children}</Text>;
+}
+
+function webClass(name: string) {
+  return Platform.OS === "web" ? ({ className: name } as const) : {};
 }
 
 function LandingHeader({ compact }: { compact?: boolean }) {
@@ -185,35 +190,30 @@ export default function WelcomeLandingPage({
   guestLoading,
   onInfoPress,
 }: Props) {
-  const { width, height } = useWindowDimensions();
-  const isMobile = width < 640;
-  const isVeryCompact = width < 380;
-  const isWide = width >= 768;
-  const lockEntryViewport = isMobile || height < 760;
-  const pagePad = isVeryCompact ? 16 : isMobile ? 18 : 16;
-  const contentMax = Math.min(920, width);
-  const gridInnerWidth = contentMax - pagePad * 2;
-  const eggCols = width >= 640 ? 3 : 2;
-  const gridGap = isMobile ? 10 : 12;
-  const eggCardWidth = (gridInnerWidth - (eggCols - 1) * gridGap) / eggCols;
-
-  const prizeCols = isMobile ? 2 : 1;
-  const prizeCardWidth =
-    prizeCols === 2
-      ? (gridInnerWidth - gridGap) / 2
-      : gridInnerWidth;
+  const layout = useLandingLayout();
+  const {
+    isMobile,
+    isVeryCompact,
+    isWide,
+    lockEntryViewport,
+    pagePad,
+    contentMax,
+    gridGap,
+    eggCols,
+  } = layout;
 
   const bounce = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (!isMobile) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(bounce, { toValue: -8, duration: 800, useNativeDriver: true }),
-          Animated.timing(bounce, { toValue: 0, duration: 800, useNativeDriver: true }),
-        ])
-      ).start();
-    }
-  }, [bounce, isMobile]);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounce, { toValue: -8, duration: 800, useNativeDriver: true }),
+        Animated.timing(bounce, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [bounce]);
+
+  const eggIconSize = isVeryCompact ? 44 : isMobile ? 52 : isWide ? 96 : 72;
+  const heroGlowSize = isVeryCompact ? 56 : isMobile ? 68 : isWide ? 120 : 100;
 
   return (
     <ScrollView
@@ -234,112 +234,139 @@ export default function WelcomeLandingPage({
             { maxWidth: contentMax, paddingHorizontal: pagePad },
           ]}
         >
-          {!isMobile ? <LandingHeader /> : null}
+          <LandingHeader compact={isMobile} />
 
-          {/* Hero — compact entry block at top; SEO sections scroll below */}
-          <View style={[styles.hero, isMobile && styles.heroMobile]}>
-            <View
-              style={[
-                styles.heroStack,
-                isMobile && styles.heroStackMobile,
-                lockEntryViewport && styles.heroStackEntry,
-              ]}
-            >
-              {!isMobile ? (
-                <Animated.View style={{ transform: [{ translateY: bounce }] }}>
-                  <View style={styles.heroEggGlow}>
-                    <Egg size={isWide ? 96 : 72} color="#FFD700" strokeWidth={1.5} />
-                  </View>
-                </Animated.View>
-              ) : (
-                <View
-                  style={[
-                    styles.heroEggGlowMobile,
-                    isVeryCompact && styles.heroEggGlowVeryCompact,
-                  ]}
-                >
-                  <Egg size={isVeryCompact ? 44 : 50} color="#FFD700" strokeWidth={1.5} />
-                </View>
-              )}
-
-              <SemanticHeading
-                level={1}
-                style={[
-                  styles.heroTitle,
-                  isWide && styles.heroTitleWide,
-                  isMobile && styles.heroTitleMobile,
-                  isVeryCompact && styles.heroTitleVeryCompact,
-                ]}
-              >
-                {LANDING_HERO.tagline}
-              </SemanticHeading>
-
-              <Text
-                style={[
-                  styles.heroSubtitle,
-                  isMobile && styles.heroSubtitleMobile,
-                  isVeryCompact && styles.heroSubtitleVeryCompact,
-                ]}
-              >
-                {LANDING_HERO.subtitle}
-              </Text>
-
+          {/* Entry panel — standard mobile game lobby UI */}
+          <View
+            style={[styles.entryPanel, isMobile && styles.entryPanelMobile]}
+            {...webClass("landing-entry-panel")}
+          >
+            <View style={[styles.hero, isMobile && styles.heroMobile]}>
               <View
                 style={[
-                  styles.heroFeatures,
-                  isMobile && styles.heroFeaturesMobile,
-                  isVeryCompact && styles.heroFeaturesVeryCompact,
+                  styles.heroStack,
+                  isMobile && styles.heroStackMobile,
+                  lockEntryViewport && styles.heroStackEntry,
                 ]}
               >
-                <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
-                  <Zap size={isVeryCompact ? 14 : 15} color="#FF6B6B" />
-                  <Text style={styles.heroFeatureText} numberOfLines={1}>
-                    Multiplayer
-                  </Text>
-                </View>
-                <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
-                  <Trophy size={isVeryCompact ? 14 : 15} color="#FFD700" />
-                  <Text style={styles.heroFeatureText} numberOfLines={1}>
-                    Real prizes
-                  </Text>
-                </View>
-                <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
-                  <Users size={isVeryCompact ? 14 : 15} color="#4ECDC4" />
-                  <Text style={styles.heroFeatureText} numberOfLines={1}>
-                    Play together
-                  </Text>
+                <Animated.View style={{ transform: [{ translateY: bounce }] }}>
+                  <View
+                    style={[
+                      styles.heroEggGlow,
+                      isMobile && styles.heroEggGlowMobile,
+                      {
+                        width: heroGlowSize,
+                        height: heroGlowSize,
+                        borderRadius: heroGlowSize / 2,
+                      },
+                    ]}
+                  >
+                    <Egg size={eggIconSize} color="#FFD700" strokeWidth={1.5} />
+                    <View
+                      style={[
+                        styles.heroEggRing,
+                        {
+                          width: heroGlowSize + 8,
+                          height: heroGlowSize + 8,
+                          borderRadius: (heroGlowSize + 8) / 2,
+                        },
+                      ]}
+                    />
+                  </View>
+                </Animated.View>
+
+                <SemanticHeading
+                  level={1}
+                  style={[
+                    styles.heroTitle,
+                    isWide && styles.heroTitleWide,
+                    isMobile && styles.heroTitleMobile,
+                    isVeryCompact && styles.heroTitleVeryCompact,
+                  ]}
+                  {...webClass("landing-hero-title")}
+                >
+                  {LANDING_HERO.tagline}
+                </SemanticHeading>
+
+                <Text
+                  style={[
+                    styles.heroSubtitle,
+                    isMobile && styles.heroSubtitleMobile,
+                    isVeryCompact && styles.heroSubtitleVeryCompact,
+                  ]}
+                  numberOfLines={isVeryCompact ? 2 : 3}
+                >
+                  {LANDING_HERO.subtitle}
+                </Text>
+
+                <View
+                  style={[
+                    styles.heroFeatures,
+                    isMobile && styles.heroFeaturesMobile,
+                    isVeryCompact && styles.heroFeaturesVeryCompact,
+                  ]}
+                >
+                  <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
+                    <View style={[styles.heroFeatureIcon, { backgroundColor: "rgba(255,107,107,0.2)" }]}>
+                      <Zap size={isVeryCompact ? 13 : 14} color="#FF6B6B" />
+                    </View>
+                    <Text style={styles.heroFeatureText} numberOfLines={1}>
+                      Multiplayer
+                    </Text>
+                  </View>
+                  <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
+                    <View style={[styles.heroFeatureIcon, { backgroundColor: "rgba(255,215,0,0.2)" }]}>
+                      <Trophy size={isVeryCompact ? 13 : 14} color="#FFD700" />
+                    </View>
+                    <Text style={styles.heroFeatureText} numberOfLines={1}>
+                      Real prizes
+                    </Text>
+                  </View>
+                  <View style={[styles.heroFeature, isMobile && styles.heroFeatureMobile]}>
+                    <View style={[styles.heroFeatureIcon, { backgroundColor: "rgba(78,205,196,0.2)" }]}>
+                      <Users size={isVeryCompact ? 13 : 14} color="#4ECDC4" />
+                    </View>
+                    <Text style={styles.heroFeatureText} numberOfLines={1}>
+                      Play together
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <View style={[styles.ctaBlock, isMobile && styles.ctaBlockMobile]}>
-              <TouchableOpacity
-                style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
-                onPress={onGooglePress}
-                disabled={googleLoading}
-              >
-                <LinearGradient colors={["#4285F4", "#34A853"]} style={styles.googleBtnInner}>
-                  {googleLoading ? (
-                    <ActivityIndicator color="#FFF" size="small" />
-                  ) : (
-                    <Text style={styles.googleBtnText}>Sign in with Google</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.guestBtn, guestLoading && styles.btnDisabled]}
-                onPress={onGuestPress}
-                disabled={guestLoading}
-              >
-                {guestLoading ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
-                  <Text style={styles.guestBtnText}>Play as Guest</Text>
-                )}
-              </TouchableOpacity>
-              <Text style={[styles.ctaNote, isMobile && styles.ctaNoteMobile]}>
-                No payment required to win. Power-ups are optional.
-              </Text>
+              <View style={[styles.ctaBlock, isMobile && styles.ctaBlockMobile]}>
+                <TouchableOpacity
+                  style={[styles.playBtn, guestLoading && styles.btnDisabled]}
+                  onPress={onGuestPress}
+                  disabled={guestLoading}
+                >
+                  <LinearGradient colors={["#FFD700", "#E6A800", "#C99200"]} style={styles.playBtnInner}>
+                    {guestLoading ? (
+                      <ActivityIndicator color="#1a1a2e" size="small" />
+                    ) : (
+                      <>
+                        <Text style={styles.playBtnText}>Play Now</Text>
+                        <ChevronRight size={18} color="#1a1a2e" />
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.googleBtn, googleLoading && styles.btnDisabled]}
+                  onPress={onGooglePress}
+                  disabled={googleLoading}
+                >
+                  <LinearGradient colors={["#4285F4", "#34A853"]} style={styles.googleBtnInner}>
+                    {googleLoading ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <Text style={styles.googleBtnText}>Sign in with Google</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+                <Text style={[styles.ctaNote, isMobile && styles.ctaNoteMobile]}>
+                  No payment required to win. Power-ups are optional.
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -362,18 +389,25 @@ export default function WelcomeLandingPage({
           {/* Egg types */}
           <View style={[styles.section, isMobile && styles.sectionMobile]}>
             <SectionTitle compact={isMobile}>Crack Eggs and Discover Rewards</SectionTitle>
-            <View style={[styles.eggGrid, { gap: gridGap }]}>
+            <View
+              style={[styles.eggGrid, { rowGap: gridGap }]}
+              {...webClass("landing-egg-grid")}
+            >
               {EGG_TYPES.map((egg) => (
                 <View
                   key={egg.key}
                   style={[
                     styles.eggCard,
                     isMobile && styles.eggCardMobile,
+                    eggCols === 2 && styles.eggCardHalf,
+                    eggCols === 3 && styles.eggCardThird,
                     {
-                      width: eggCardWidth,
-                      borderColor: `${egg.color}40`,
+                      borderColor: `${egg.color}55`,
+                      borderTopColor: egg.color,
+                      borderTopWidth: 3,
                     },
                   ]}
+                  {...webClass("landing-egg-card")}
                 >
                   <View style={styles.eggCardTop}>
                     <View style={[styles.eggShape, { backgroundColor: egg.color }]}>
@@ -383,7 +417,7 @@ export default function WelcomeLandingPage({
                       {egg.name}
                     </SemanticHeading>
                   </View>
-                  <Text style={[styles.eggCardCopy, isMobile && styles.eggCardCopyMobile]}>
+                  <Text style={[styles.eggCardCopy, isMobile && styles.eggCardCopyMobile]} numberOfLines={isMobile ? 3 : 4}>
                     {egg.copy}
                   </Text>
                 </View>
@@ -402,15 +436,19 @@ export default function WelcomeLandingPage({
           {/* Prizes */}
           <View style={[styles.section, isMobile && styles.sectionMobile]}>
             <SectionTitle compact={isMobile}>What Can You Win?</SectionTitle>
-            <View style={[styles.prizeGrid, { gap: gridGap }]}>
+            <View
+              style={[styles.prizeGrid, { rowGap: gridGap }]}
+              {...webClass("landing-prize-grid")}
+            >
               {PRIZES_SECTION.groups.map((group) => (
                 <View
                   key={group.title}
                   style={[
                     styles.prizeCard,
                     isMobile && styles.prizeCardMobile,
-                    { width: prizeCardWidth },
+                    styles.prizeCardHalf,
                   ]}
+                  {...webClass("landing-prize-card")}
                 >
                   <Text style={styles.prizeCardTitle} numberOfLines={2}>
                     {group.emoji} {group.title}
@@ -530,9 +568,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 8,
-    marginBottom: 6,
+    marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    borderBottomColor: "rgba(255,215,0,0.15)",
+    backgroundColor: "rgba(0,0,0,0.2)",
+    borderRadius: 12,
+    paddingHorizontal: 10,
   },
   dashboardHeaderCompact: {
     paddingVertical: 6,
@@ -575,9 +616,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#4ADE80",
   },
   liveBadgeText: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
+  entryPanel: {
+    width: "100%",
+    marginBottom: 22,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.22)",
+    backgroundColor: "rgba(15,52,96,0.35)",
+  },
+  entryPanelMobile: {
+    padding: 14,
+    marginBottom: 18,
+  },
   hero: {
     width: "100%",
-    marginBottom: 24,
+    marginBottom: 0,
   },
   heroMobile: {
     marginBottom: 18,
@@ -598,31 +652,26 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   heroEggGlow: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(255,215,0,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroEggGlowMobile: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(255,215,0,0.08)",
+    backgroundColor: "rgba(255,215,0,0.1)",
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
+    position: "relative",
   },
-  heroEggGlowVeryCompact: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  heroEggGlowMobile: {
+    backgroundColor: "rgba(255,215,0,0.12)",
+  },
+  heroEggRing: {
+    position: "absolute",
+    borderWidth: 2,
+    borderColor: "rgba(255,215,0,0.35)",
+    top: -4,
+    left: -4,
   },
   heroTitle: {
     fontSize: 28,
-    fontWeight: "700",
-    color: "#FFF",
+    fontWeight: "800",
+    color: "#FFD700",
     textAlign: "center",
     marginBottom: 0,
     marginTop: 0,
@@ -675,45 +724,51 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   heroFeature: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   heroFeatureMobile: {
     flex: 1,
     minWidth: 0,
-    paddingHorizontal: 6,
-    paddingVertical: 7,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+  },
+  heroFeatureIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
     justifyContent: "center",
   },
   heroFeatureText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "500",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
     flexShrink: 1,
     textAlign: "center",
   },
-  ctaBlock: { width: "100%", gap: 8, alignSelf: "stretch" },
+  ctaBlock: { width: "100%", gap: 10, alignSelf: "stretch" },
   ctaBlockMobile: { gap: 8 },
-  googleBtn: { borderRadius: 12, overflow: "hidden" },
-  googleBtnInner: { paddingVertical: 13, alignItems: "center" },
-  googleBtnText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
-  guestBtn: {
-    paddingVertical: 13,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+  playBtn: { borderRadius: 14, overflow: "hidden" },
+  playBtnInner: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 15,
   },
-  guestBtnText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
+  playBtnText: { color: "#1a1a2e", fontSize: 16, fontWeight: "800", letterSpacing: 0.3 },
+  googleBtn: { borderRadius: 12, overflow: "hidden" },
+  googleBtnInner: { paddingVertical: 12, alignItems: "center" },
+  googleBtnText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
   btnDisabled: { opacity: 0.6 },
   ctaNote: {
     fontSize: 11,
@@ -735,6 +790,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 0,
     letterSpacing: -0.2,
+    paddingBottom: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: "rgba(255,215,0,0.35)",
   },
   sectionTitleCompact: {
     fontSize: 16,
@@ -749,31 +807,46 @@ const styles = StyleSheet.create({
   eggGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignContent: "flex-start",
     width: "100%",
   },
-  eggCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-  },
-  eggCardMobile: {
-    padding: 10,
-    borderRadius: 10,
-  },
-  eggCardTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  eggShape: {
-    width: 36,
-    height: 44,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 3,
+  eggCardHalf: {
+    width: "48%",
+    maxWidth: "48%",
+    flexGrow: 0,
     flexShrink: 0,
   },
-  eggCardChicken: { fontSize: 14 },
-  eggCardName: { fontSize: 13, fontWeight: "600", color: "#FFF", flex: 1 },
-  eggCardCopy: { fontSize: 12, lineHeight: 18, color: "rgba(255,255,255,0.6)" },
+  eggCardThird: {
+    width: "31.5%",
+    maxWidth: "31.5%",
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  eggCard: {
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    marginBottom: 0,
+  },
+  eggCardMobile: {
+    padding: 8,
+    borderRadius: 10,
+  },
+  eggCardTop: { flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 6 },
+  eggShape: {
+    width: 32,
+    height: 40,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 2,
+    flexShrink: 0,
+  },
+  eggCardChicken: { fontSize: 13 },
+  eggCardName: { fontSize: 12, fontWeight: "700", color: "#FFF", textAlign: "center", flex: 0 },
+  eggCardCopy: { fontSize: 11, lineHeight: 16, color: "rgba(255,255,255,0.6)", textAlign: "center" },
   eggCardCopyMobile: { fontSize: 11, lineHeight: 16 },
   carouselContent: { gap: 12, paddingVertical: 2 },
   carouselLoading: { alignItems: "center", paddingVertical: 20, gap: 8 },
@@ -851,14 +924,22 @@ const styles = StyleSheet.create({
   prizeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignContent: "flex-start",
     width: "100%",
   },
+  prizeCardHalf: {
+    width: "48%",
+    maxWidth: "48%",
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   prizeCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(0,0,0,0.25)",
     borderRadius: 10,
-    padding: 12,
+    padding: 10,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.08)",
   },
   prizeCardMobile: {
     padding: 10,
