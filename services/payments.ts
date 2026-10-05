@@ -70,6 +70,8 @@ export async function initiateBankTransfer(
   return json;
 }
 
+/* push back to git*/
+
 export interface VerifyPaymentResponse {
   status: "PENDING" | "SUCCESS" | "FAILED";
   payment: { id: string; txRef: string; multiplier: number; quantity: number; status: string };
