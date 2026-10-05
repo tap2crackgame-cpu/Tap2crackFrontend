@@ -1,0 +1,28 @@
+# Tap2Crack
+
+> Tap2Crack is a free-to-play, real-time multiplayer egg-cracking game at https://www.tap2crackgame.com. Players tap a shared egg at the same time. The server decides how many taps the egg needs, and whoever lands the final tap cracks it and wins that round's prize. Prizes are currently mobile airtime, coupons and discounts.
+
+Key facts:
+- Plays in a web browser on phones and desktops. Sign in with Google or play as a guest.
+- Free: no payment is needed to play or win.
+- Egg progress, the cracking tap and the winner are decided by the game server, not by the player's device.
+- Optional power-ups: 2x and 3x tap boosts can be bought, and a 2x boost can be earned by watching a sponsor ad. They are never required.
+- Egg types: Normal, Silver, Gold, Business, Company and Pure eggs. Business and Company eggs carry coupons and discounts from partner brands.
+- Prize codes and status are shown to winners in the app (Prizes page when signed in).
+- Support and sponsorship enquiries: tap2crackgame@gmail.com
+
+## Pages
+
+- [Home](https://www.tap2crackgame.com/): what the game is and how to start
+- [How to Play](https://www.tap2crackgame.com/how-to-play): choose an egg, tap together, land the final tap
+- [FAQ](https://www.tap2crackgame.com/faq): prizes, delivery, power-ups, mobile play, who can play
+- [Contact and sponsorship](https://www.tap2crackgame.com/sponsor): support and how brands can sponsor an egg
+- [Terms](https://www.tap2crackgame.com/terms)
+- [Privacy Policy](https://www.tap2crackgame.com/privacy-policy)
+
+## Optional
+
+- [Full text version of this guide](https://www.tap2crackgame.com/llms-full.txt)
+- [Instagram](https://www.instagram.com/tap2crackgame/)
+- [TikTok](https://www.tiktok.com/@tap2crack)
+- [X / Twitter](https://x.com/Tap2Crack_)
