@@ -69,7 +69,7 @@ export async function initiateBankTransfer(
   }
   return json;
 }
-
+/* commit 1 */
 
 export interface VerifyPaymentResponse {
   status: "PENDING" | "SUCCESS" | "FAILED";
