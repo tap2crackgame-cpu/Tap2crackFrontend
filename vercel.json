@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "npm install && npm run build:web && cp robots.txt dist/robots.txt && cp sitemap.xml dist/sitemap.xml && cp ads.txt dist/ads.txt && cp assets/images/favicon.ico dist/favicon.ico && cp assets/images/og-image.png dist/og-image.png && cp llms.txt dist/llms.txt && (node --experimental-strip-types scripts/prerender-seo.mjs || echo 'SEO prerender skipped')",
+  "buildCommand": "npm install && npm run build:vercel",
   "outputDirectory": "dist",
   "redirects": [
     {

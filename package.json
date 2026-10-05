@@ -9,6 +9,7 @@
     "dev": "expo start --lan",
     "dev:web": "expo start --web --lan",
     "build:web": "expo export --platform web",
+    "build:vercel": "npm run build:web && cp robots.txt dist/robots.txt && cp sitemap.xml dist/sitemap.xml && cp ads.txt dist/ads.txt && cp assets/images/favicon.ico dist/favicon.ico && cp assets/images/og-image.png dist/og-image.png && cp llms.txt dist/llms.txt && (node --experimental-strip-types scripts/prerender-seo.mjs || echo 'SEO prerender skipped')",
     "lint": "expo lint"
   },
   "dependencies": {
