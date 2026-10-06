@@ -11,14 +11,13 @@ import ProgressBar from "@/components/ProgressBar";
 import PowerUpPanel, { type PowerUpPanelRef } from "@/components/PowerUpPanel";
 import { calculatePowerUpCost, mergePowerUpInventory, formatWinnerPrizeAmount, displayWinnerName, type PowerUpType } from "@/types/game";
 import { useAuth } from "@/context/AuthContext";
-import OnlineUsers from "@/components/OnlineUsers";
 import CooldownTimer from "@/components/CooldownTimer";
 import WinModal from "@/components/WinModal";
 import LoseModal from "@/components/LoseModal";
 import AdModal from "@/components/AdModal";
 import PaymentModal from "@/components/paymentModal";
 import TapFeedback from "@/components/TapFeedback";
-import PowerUpBackground from "@/components/PowerUpBackground";
+import PowerUpBackground, { PowerUpActiveStrip } from "@/components/PowerUpBackground";
 import CheerCrowd from "@/components/CheerCrowd";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
 import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
@@ -202,6 +201,7 @@ export default function Tap2CrackGame() {
   }, [flushTapUi]);
 
   const isWideWeb = Platform.OS === "web" && width >= 900;
+  const showNavLabels = width >= 640;
   const contentMax = Math.min(560, Math.max(280, width - 32));
   const carouselCardW = Math.min(260, contentMax * 0.44);
   const padH = width < 360 ? 10 : width < 480 ? 14 : 20;
@@ -277,9 +277,10 @@ export default function Tap2CrackGame() {
   const isShort = height < 760;
 
   // Size the egg so the header, egg and progress bar all fit on one phone screen.
-  // Space reserved for: header (~52) + nav (~46) + prize row (~56) + egg label (~44) + progress bar (~86) + breathing room.
-  const reservedH = 52 + 46 + 56 + 44 + 86 + 24;
-  const eggH = Math.max(150, Math.min(isShort ? 230 : 250, height - reservedH));
+  // Space reserved for: header (~56) + power-up strip (~34) + prize badge (~50) + egg label (~44)
+  // + progress bar (~86) + breathing room. The strip is always reserved so the egg doesn't jump when a boost starts.
+  const reservedH = 56 + 34 + 50 + 44 + 86 + 24;
+  const eggH = Math.max(140, Math.min(isShort ? 210 : 235, height - reservedH));
   const eggW = Math.round(eggH * (180 / 220));
   // Non-normal eggs show an extra frequency badge under the egg name.
   const eggHasBadge = !!currentEgg && currentEgg.egg.type !== "normal" && currentEgg.egg.type !== "no-powerup";
@@ -598,6 +599,8 @@ export default function Tap2CrackGame() {
           </Animated.View>
         ) : null}
         
+        {/* One compact header row: who you are + online count on the left, round icon buttons on the right.
+            (Replaces the separate pill row so the top of the screen stays clean.) */}
         <View style={[styles.header, { paddingHorizontal: padH }]}>
           <View style={styles.userInfo}>
             <View style={[styles.avatar, width < 380 && styles.avatarSm]}>
@@ -605,33 +608,42 @@ export default function Tap2CrackGame() {
             </View>
             <View style={styles.userInfoText}>
               <Text style={[styles.userName, width < 380 && styles.userNameSm]} numberOfLines={1}>
-                 👋 {user.name || "Guest"}
+                {user.name || "Guest"}
               </Text>
               <View style={styles.rankRow}>
                 <Crown size={width < 380 ? 10 : 12} color="#FFD700" />
                 <Text style={[styles.rankText, width < 380 && styles.rankTextSm]} numberOfLines={1}>
                   {user?.stats?.rank || "Egg Novice"}
                 </Text>
+                <View style={styles.onlineDot} />
+                <Text style={[styles.rankText, width < 380 && styles.rankTextSm]} numberOfLines={1}>
+                  {onlineUsers.toLocaleString()} online
+                </Text>
               </View>
             </View>
           </View>
-          <OnlineUsers count={onlineUsers} />
+
+          <View style={[styles.headerNav, { gap: navGap }]}>
+            {([
+              { label: "Rank", href: "/leaderboard", icon: <Trophy size={18} color="#FFD700" /> },
+              { label: "Winners", href: "/winners", icon: <UsersIcon size={18} color="#4ECDC4" /> },
+              { label: "Profile", href: "/profile", icon: <User size={18} color="#FF6B6B" /> },
+            ] as const).map((item) => (
+              <TouchableOpacity
+                key={item.href}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                style={[styles.iconBtn, showNavLabels && styles.iconBtnLabeled]}
+                onPress={() => router.push(item.href)}
+              >
+                {item.icon}
+                {showNavLabels && <Text style={styles.navText}>{item.label}</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        <View style={[styles.navRow, { paddingHorizontal: padH, gap: navGap, marginBottom: isShort ? 6 : width < 400 ? 10 : 16 }]}>
-          <TouchableOpacity style={[styles.navBtn, width < 380 && styles.navBtnSm]} onPress={() => router.push("/leaderboard")}>
-            <Trophy size={width < 380 ? 18 : 20} color="#FFD700" />
-            <Text style={[styles.navText, width < 380 && styles.navTextSm]}>Rank</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.navBtn, width < 380 && styles.navBtnSm]} onPress={() => router.push("/winners")}>
-            <UsersIcon size={width < 380 ? 18 : 20} color="#4ECDC4" />
-            <Text style={[styles.navText, width < 380 && styles.navTextSm]}>Winners</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.navBtn, width < 380 && styles.navBtnSm]} onPress={() => router.push("/profile")}>
-            <User size={width < 380 ? 18 : 20} color="#FF6B6B" />
-            <Text style={[styles.navText, width < 380 && styles.navTextSm]}>Profile</Text>
-          </TouchableOpacity>
-        </View>
+        <PowerUpActiveStrip activePowerUp={activePowerUp} isHappyHour={!!currentEgg.isHappyHour} />
 
         <ScrollView 
           ref={scrollViewRef}
@@ -641,14 +653,6 @@ export default function Tap2CrackGame() {
           <View style={[styles.gameMainColumn, { maxWidth: contentMax, width: isWideWeb ? contentMax : "100%" }]}>
           {currentEgg && currentEgg.egg.type === 'normal' && (
             <View style={[styles.prizeRow, isShort && styles.prizeRowCompact]}>
-              <View style={[styles.prizeTypeBadge, isShort && styles.prizeTypeBadgeCompact]}>
-                <Text style={styles.prizeTypeIcon}>{getPrizeIcon()}</Text>
-                <Text style={styles.prizeTypeText}>
-                  Win {currentEgg.prize.type === 'airtime' ? 'Airtime' : 
-                       currentEgg.prize.type === 'coupon' ? 'Coupon' : 
-                       currentEgg.prize.type === 'cash' ? 'Cash' : 'Prize'}
-                </Text>
-              </View>
               <View style={[styles.prizeIndicatorContainer, isShort && styles.prizeIndicatorCompact]}>
                 <PrizeIndicator 
                   prize={currentEgg.prize} 
@@ -997,7 +1001,7 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
   },
   loader: { marginVertical: 40 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 8, paddingBottom: 8, minHeight: 52 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 10, paddingBottom: 10, minHeight: 56 },
   userInfo: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 0, marginRight: 8 },
   userInfoText: { flex: 1, minWidth: 0 },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,215,0,0.2)", justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#FFD700" },
@@ -1009,6 +1013,19 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   rankText: { fontSize: 11, color: "rgba(255,255,255,0.7)", flexShrink: 1 },
   rankTextSm: { fontSize: 10 },
+  headerNav: { flexDirection: "row", alignItems: "center" },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  iconBtnLabeled: { width: "auto" as any, flexDirection: "row", gap: 6, paddingHorizontal: 14 },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#2ECC71", marginLeft: 6 },
   navRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", flexWrap: "nowrap" },
   navBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.08)", paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, flexShrink: 1 },
   navBtnSm: { paddingVertical: 6, paddingHorizontal: 10, gap: 4 },

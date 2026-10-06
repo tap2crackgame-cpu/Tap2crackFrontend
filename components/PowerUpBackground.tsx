@@ -82,7 +82,7 @@ function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgr
   const decorSize = isPhone ? 22 : 28;
   const sparkSize = isPhone ? 18 : 22;
   const edge = isPhone ? 6 : 16;
-  const topBand = Math.max(130, height * 0.24); // below the header + nav
+  const topBand = Math.max(210, height * 0.32); // beside the egg, well below the header, nav and active strip
 
   const y1 = float1.interpolate({ inputRange: [0, 1], outputRange: [-10, 10] });
   const y2 = float2.interpolate({ inputRange: [0, 1], outputRange: [8, -8] });
@@ -98,14 +98,12 @@ function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgr
         bubble: '3x!!', bubbleBg: '#9B59B6', big: '3×', color: '#D4A5FF',
         badgeBg: 'rgba(155, 89, 182, 0.3)', badgeBorder: 'rgba(155, 89, 182, 0.6)',
         orbA: 'rgba(155, 89, 182, 0.18)', orbB: 'rgba(255, 107, 107, 0.14)',
-        banner: '⚡ TRIPLE TAP ACTIVE ⚡', bannerBg: 'rgba(155, 89, 182, 0.22)',
       }
     : {
         char1: '🐣', char2: '🐥', decor: '✨', sparkL: '⭐', sparkR: '✨',
         bubble: '2x!', bubbleBg: '#4ECDC4', big: '2×', color: '#4ECDC4',
         badgeBg: 'rgba(78, 205, 196, 0.25)', badgeBorder: 'rgba(78, 205, 196, 0.5)',
         orbA: 'rgba(78, 205, 196, 0.15)', orbB: 'rgba(255, 215, 0, 0.12)',
-        banner: '🐣 DOUBLE TAP ACTIVE 🐣', bannerBg: 'rgba(78, 205, 196, 0.18)',
       };
 
   return (
@@ -151,15 +149,50 @@ function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgr
         <Emoji char={t.decor} size={decorSize} />
       </Animated.View>
 
-      {/* banner pinned to the bottom so it never covers the header */}
-      <Animated.View style={[styles.banner, { backgroundColor: t.bannerBg, opacity: glowOpacity.interpolate({ inputRange: [0.25, 0.6], outputRange: [0.75, 1] }) }]}>
-        <Text style={[styles.bannerText, isPhone && styles.bannerTextSm, { color: t.color }]} numberOfLines={1}>
-          {t.banner}
-        </Text>
-      </Animated.View>
     </Animated.View>
   );
 }
+
+/**
+ * "DOUBLE / TRIPLE TAP ACTIVE" strip. Sits in the page layout (under the nav), not floating,
+ * so the header can never overlap it.
+ */
+export const PowerUpActiveStrip = memo(
+  function PowerUpActiveStrip({ activePowerUp, isHappyHour = false }: PowerUpBackgroundProps) {
+    const { width } = useWindowDimensions();
+    const isPhone = width < 420;
+    const mode: Mode | null =
+      activePowerUp?.type === '3x' ? '3x' : activePowerUp?.type === '2x' || isHappyHour ? '2x' : null;
+    const glow = useWave(1500, mode !== null);
+    const appear = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+      if (!mode) { appear.setValue(0); return; }
+      Animated.timing(appear, { toValue: 1, duration: 300, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    }, [mode, appear]);
+    if (!mode) return null;
+    const is3x = mode === '3x';
+    const color = is3x ? '#D4A5FF' : '#4ECDC4';
+    return (
+      <Animated.View
+        style={[
+          styles.strip,
+          {
+            backgroundColor: is3x ? 'rgba(155, 89, 182, 0.22)' : 'rgba(78, 205, 196, 0.18)',
+            borderColor: is3x ? 'rgba(155, 89, 182, 0.5)' : 'rgba(78, 205, 196, 0.45)',
+            opacity: Animated.multiply(appear, glow.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] })),
+            transform: [{ translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] }) }],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <Text style={[styles.bannerText, isPhone && styles.bannerTextSm, { color }]} numberOfLines={1}>
+          {is3x ? '⚡ TRIPLE TAP ACTIVE ⚡' : isHappyHour && activePowerUp?.type !== '2x' ? '🐣 HAPPY HOUR · 2X TAPS 🐣' : '🐣 DOUBLE TAP ACTIVE 🐣'}
+        </Text>
+      </Animated.View>
+    );
+  },
+  (a, b) => a.activePowerUp?.type === b.activePowerUp?.type && !!a.isHappyHour === !!b.isHappyHour
+);
 
 /** Only re-render when the power-up actually changes, not on every tap. */
 export default memo(
@@ -213,13 +246,14 @@ const styles = StyleSheet.create({
   bigSub: { fontSize: 13, lineHeight: 16, fontWeight: '800' as const, letterSpacing: 4 },
   bigSubSm: { fontSize: 10, lineHeight: 13, letterSpacing: 3 },
 
-  banner: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  strip: {
+    alignSelf: 'center',
     alignItems: 'center',
-    paddingVertical: 7,
+    paddingVertical: 5,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 6,
   },
   bannerText: { fontSize: 13, lineHeight: 17, fontWeight: '800' as const, letterSpacing: 2 },
   bannerTextSm: { fontSize: 11, lineHeight: 15, letterSpacing: 1.5 },

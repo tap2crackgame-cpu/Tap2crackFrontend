@@ -90,13 +90,13 @@ export default memo(function TapFeedback({ tapCount, consecutiveTaps, tapMultipl
     const cy = centerY;
 
     const mainId = particleIdRef.current++;
-    const multiplierText = tapMultiplier > 1 ? `+${tapMultiplier}` : undefined;
     newParticles.push({
       id: mainId,
       x: cx + (Math.random() - 0.5) * spreadX,
       y: cy + (Math.random() - 0.5) * spreadY,
       emoji: feedback.emoji,
-      text: multiplierText || feedback.text,
+      // Always show the pun; during 2x/3x the "+2" / "+3" pops out as its own particle beside it.
+      text: feedback.text,
       size: isCrack ? 46 : isBombMode ? 40 : isFireMode ? 36 : 30,
       isFire: isFireMode || isCrack,
       isBomb: isBombMode,
@@ -106,8 +106,9 @@ export default memo(function TapFeedback({ tapCount, consecutiveTaps, tapMultipl
     if (tapMultiplier > 1) {
       newParticles.push({
         id: particleIdRef.current++,
-        x: cx + (Math.random() - 0.5) * 60 + 30,
-        y: cy + (Math.random() - 0.5) * 30 - 20,
+        // off to one side so it doesn't sit on top of the pun
+        x: cx + (Math.random() < 0.5 ? -1 : 1) * (compact ? 70 : 90),
+        y: cy + 10 + (Math.random() - 0.5) * 20,
         emoji: tapMultiplier >= 3 ? '⚡' : '✨',
         text: `+${tapMultiplier}`,
         size: 24,
@@ -165,7 +166,7 @@ export default memo(function TapFeedback({ tapCount, consecutiveTaps, tapMultipl
     }, 1100);
 
     lastTapCountRef.current = tapCount;
-  }, [tapCount, consecutiveTaps, tapMultiplier, crackProgress, centerX, centerY]);
+  }, [tapCount, consecutiveTaps, tapMultiplier, crackProgress, centerX, centerY, compact]);
 
   return (
     <View style={styles.container} pointerEvents="none">

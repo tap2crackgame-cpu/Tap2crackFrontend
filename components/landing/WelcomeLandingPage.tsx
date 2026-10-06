@@ -12,6 +12,7 @@ import { useWinnersQuery } from "@/hooks/useWinnersQuery";
 import { displayWinnerName, formatWinnerPrizeLabel } from "@/types/game";
 import { HOW_IT_WORKS_STEPS, LANDING_FAQ_PREVIEW, SUPPORT_EMAIL } from "@/constants/seo";
 import { EGG_TYPES, PRIZES_SECTION, FOOTER_LINKS } from "@/constants/landingCopy";
+import { Menu, X } from "lucide-react-native";
 import { Clucky, EggArt, INK } from "./Mascot";
 
 // Add <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap" rel="stylesheet"> in app/+html.tsx
@@ -74,6 +75,63 @@ function WinnersMarquee() {
   );
 }
 
+const NAV_LINKS = [
+  { href: "/how-to-play", label: "How to Play" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/sponsor", label: "Sponsor an Egg" },
+] as const;
+
+/** Fixed top bar: logo on the left, links + Play button on the right (links fold into a menu on phones). */
+function TopNav({ isWide, isMobile, pagePad, contentMax, onPlay, playLoading, onInfoPress }: {
+  isWide: boolean; isMobile: boolean; pagePad: number; contentMax: number;
+  onPlay: () => void; playLoading: boolean; onInfoPress: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={s.navOuter}>
+      <View style={[s.navInner, { maxWidth: contentMax, paddingHorizontal: pagePad, height: isMobile ? 58 : 66 }]}>
+        <View style={s.navBrand} accessibilityRole="header">
+          <EggArt type="golden" size={isMobile ? 24 : 28} label="Tap2Crack logo" />
+          <T style={[s.navLogo, isMobile && { fontSize: 20 }]}>Tap2Crack</T>
+        </View>
+
+        <View style={s.navRight}>
+          {isWide && NAV_LINKS.map((l) => (
+            <Link key={l.href} href={l.href as never} style={s.navLink}>{l.label}</Link>
+          ))}
+          <TouchableOpacity accessibilityRole="button" onPress={onPlay} disabled={playLoading} style={playLoading && s.off}>
+            <LinearGradient colors={["#FFD700", "#E6A800"]} style={s.navBtn}>
+              {playLoading ? <ActivityIndicator size="small" color={INK} /> : <T style={s.navBtnText}>Play Now</T>}
+            </LinearGradient>
+          </TouchableOpacity>
+          {!isWide && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={open ? "Close menu" : "Open menu"}
+              accessibilityState={{ expanded: open }}
+              onPress={() => setOpen((o) => !o)}
+              style={s.navMenuBtn}
+            >
+              {open ? <X size={22} color="#fff" /> : <Menu size={22} color="#fff" />}
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {!isWide && open && (
+        <View style={[s.navDrop, { paddingHorizontal: pagePad }]}>
+          {NAV_LINKS.map((l) => (
+            <Link key={l.href} href={l.href as never} style={s.navDropLink} onPress={() => setOpen(false)}>{l.label}</Link>
+          ))}
+          <TouchableOpacity onPress={() => { setOpen(false); onInfoPress(); }}>
+            <T style={s.navDropLink}>About Tap2Crack</T>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
 type Props = { onGooglePress: () => void; onGuestPress: () => void; googleLoading: boolean; guestLoading: boolean; onInfoPress: () => void };
 
 export default function WelcomeLandingPage({ onGooglePress, onGuestPress, googleLoading, guestLoading, onInfoPress }: Props) {
@@ -101,9 +159,18 @@ export default function WelcomeLandingPage({ onGooglePress, onGuestPress, google
 
   return (
     <LinearGradient colors={["#1A1A2E", "#16213E", "#0F3460"]} style={{ flex: 1 }}>
+      <TopNav
+        isWide={isWide}
+        isMobile={isMobile}
+        pagePad={pagePad}
+        contentMax={contentMax}
+        onPlay={onGuestPress}
+        playLoading={guestLoading}
+        onInfoPress={onInfoPress}
+      />
       <ScrollView showsVerticalScrollIndicator={Platform.OS !== "web"}>
         {/* HERO */}
-        <View style={[wrap, { paddingTop: 12, flexDirection: isWide ? "row" : "column", alignItems: "center", gap: 20 }]}>
+        <View style={[wrap, { paddingTop: isMobile ? 32 : 56, paddingBottom: isMobile ? 8 : 16, flexDirection: isWide ? "row" : "column", alignItems: "center", gap: 20 }]}>
           <View style={{ flex: isWide ? 1 : undefined, alignItems: center ? "center" : "flex-start", width: "100%" }}>
             <SemanticHeading level={1} style={[s.h1, isMobile && { fontSize: 34, lineHeight: 38 }, center && { textAlign: "center" }]}>
               Tap the egg. Crack it. Win real rewards!
@@ -243,4 +310,30 @@ const s = StyleSheet.create({
   link: { fontFamily: FONT, color: GOLD, fontWeight: "700", textDecorationLine: "underline", marginTop: 6 },
   footLink: { fontFamily: FONT, color: GOLD, fontSize: 14 },
   footText: { fontSize: 14, opacity: 0.85 },
+
+  navOuter: {
+    zIndex: 20,
+    backgroundColor: "rgba(26,26,46,0.96)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.1)",
+  },
+  navInner: { width: "100%", alignSelf: "center", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  navBrand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  navLogo: { fontFamily: FONT, fontSize: 22, fontWeight: "700", color: "#fff" },
+  navRight: { flexDirection: "row", alignItems: "center", gap: 18 },
+  navLink: { fontFamily: FONT, color: "rgba(255,255,255,0.85)", fontSize: 15, fontWeight: "600" },
+  navBtn: { borderRadius: 12, paddingVertical: 8, paddingHorizontal: 16, alignItems: "center", minWidth: 96 },
+  navBtnText: { fontSize: 15, fontWeight: "700", color: INK },
+  navMenuBtn: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.08)", marginLeft: -6 },
+  navDrop: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(26,26,46,0.98)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.12)",
+    paddingVertical: 8,
+  },
+  navDropLink: { fontFamily: FONT, color: "#fff", fontSize: 16, fontWeight: "600", paddingVertical: 12 },
 });

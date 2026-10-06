@@ -67,7 +67,7 @@ export default function PrizeIndicator({ prize, eggType, compact = false }: Priz
           {config.icon}
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.label}>{config.label}</Text>
+          <Text style={styles.label}>Win {config.label}</Text>
           <Text style={[styles.value, compact && styles.valueCompact]}>{maskedValue}</Text>
         </View>
       </LinearGradient>
