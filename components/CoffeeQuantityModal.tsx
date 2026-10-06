@@ -80,6 +80,9 @@ const s = StyleSheet.create({
     padding: 24,
   },
   sheet: {
+    width: "100%",
+    maxWidth: 440,
+    alignSelf: "center",
     backgroundColor: "#1a1a2e",
     borderRadius: 16,
     padding: 24,

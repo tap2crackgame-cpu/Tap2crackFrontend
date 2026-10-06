@@ -3,10 +3,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Egg, Mail, Megaphone } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
 import SeoHead from "@/components/SeoHead";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const SPONSOR_EMAIL = "tap2crackgame@gmail.com";
 
 export default function SponsorScreen() {
+  const page = useResponsive();
   const handleContact = () => {
     Linking.openURL(
       `mailto:${SPONSOR_EMAIL}?subject=Tap2Crack%20Sponsorship%20Inquiry&body=Hi%2C%20I%27m%20interested%20in%20sponsoring%20an%20egg%20round%20on%20Tap2Crack.`
@@ -17,7 +19,7 @@ export default function SponsorScreen() {
     <SafeAreaView style={styles.container}>
       <SeoHead page="sponsor" />
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.iconWrap}>
               <Megaphone size={30} color="#FFD700" />

@@ -5,13 +5,15 @@ import { Link } from "expo-router";
 import SeoHead from "@/components/SeoHead";
 import SemanticHeading from "@/components/SemanticHeading";
 import { FAQ_ITEMS } from "@/constants/seo";
+import { useResponsive } from "@/hooks/useResponsive";
 
 export default function FaqScreen() {
+  const page = useResponsive();
   return (
     <SafeAreaView style={styles.container}>
       <SeoHead page="faq" faqSchema />
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.iconWrap}>
               <HelpCircle size={28} color="#FFD700" />

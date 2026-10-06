@@ -7,10 +7,12 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/context/ToastContext";
 import CoffeeQuantityModal from "@/components/CoffeeQuantityModal";
 import CoffeePaymentModal from "@/components/CoffeePaymentModal";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const SUPPORT_EMAIL = "tap2crackgame@gmail.com";
 
 export default function BuyCoffeePage() {
+  const page = useResponsive();
   const { token } = useAuth();
   const [qtyModalOpen, setQtyModalOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -38,7 +40,7 @@ export default function BuyCoffeePage() {
 
   return (
     <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
         <View style={styles.iconWrap}>
           <View style={styles.coffeeCircle}>
             <Coffee size={48} color="#FBBF24" />

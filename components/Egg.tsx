@@ -11,6 +11,10 @@ interface EggProps {
   isCooldown: boolean;
   isLoser?: boolean;
   testCrackLevel?: number | null;
+  /** Egg width in px (height keeps the 180:220 shape). Lets the game screen shrink the egg on short phones. */
+  size?: number;
+  /** Tighter spacing under the egg (short screens). */
+  compact?: boolean;
 }
 
 const getEggGradient = (type: EggType): [string, string] => {
@@ -86,7 +90,11 @@ export default function EggComponent({
   isCooldown,
   isLoser = false,
   testCrackLevel = null,
+  size = 180,
+  compact = false,
 }: EggProps) {
+  const eggW = Math.round(size);
+  const eggH = Math.round(size * (220 / 180));
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -238,8 +246,8 @@ export default function EggComponent({
         <View style={styles.eggContainer}>
           {/* Main Egg or Broken Pieces */}
           {!showYolk ? (
-            <View style={[styles.eggGradient, isLoser && styles.loserEgg]}>
-              <Svg width="180" height="220" viewBox="0 0 180 220">
+            <View style={[styles.eggGradient, { width: eggW, height: eggH }, isLoser && styles.loserEgg]}>
+              <Svg width={eggW} height={eggH} viewBox="0 0 180 220">
                 <Defs>
                   <SvgGradient id="eggFill" x1="54" y1="0" x2="126" y2="220" gradientUnits="userSpaceOnUse">
                     <Stop offset="0" stopColor={gradientStart} />
@@ -280,8 +288,8 @@ export default function EggComponent({
             </View>
           ) : (
             /* Broken egg with scattered fragments */
-            <View style={[styles.eggGradient, styles.brokenEggContainer]}>
-              <Svg width="180" height="220" viewBox="0 0 180 220" style={StyleSheet.absoluteFill}>
+            <View style={[styles.eggGradient, { width: eggW, height: eggH }, styles.brokenEggContainer]}>
+              <Svg width={eggW} height={eggH} viewBox="0 0 180 220" style={StyleSheet.absoluteFill}>
                 {/* Egg white oozing */}
                 <Ellipse cx="90" cy="110" rx="70" ry="85" fill="rgba(255,255,255,0.3)" />
                 
@@ -339,8 +347,8 @@ export default function EggComponent({
 
         </View>
 
-        <View style={styles.eggLabel}>
-          <Text style={[styles.eggName, isLoser && styles.loserTextStyle]}>{config.name}</Text>
+        <View style={[styles.eggLabel, compact && styles.eggLabelCompact]}>
+          <Text style={[styles.eggName, compact && styles.eggNameCompact, isLoser && styles.loserTextStyle]}>{config.name}</Text>
           {type !== 'normal' && type !== 'no-powerup' && (
             <View style={[styles.badge, { backgroundColor: config.color }]}>
               <Text style={styles.badgeText}>{config.frequency}</Text>
@@ -422,6 +430,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
     alignItems: 'center',
     gap: 8,
+  },
+  eggLabelCompact: {
+    marginTop: 8,
+    gap: 4,
+  },
+  eggNameCompact: {
+    fontSize: 15,
   },
   eggName: {
     fontSize: 18,

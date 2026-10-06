@@ -333,6 +333,9 @@ export default function CoffeePaymentModal({ visible, quantity, token, onClose }
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", padding: 20 },
   sheet: {
+    width: "100%",
+    maxWidth: 440,
+    alignSelf: "center",
     backgroundColor: "#1a1a2e",
     borderRadius: 16,
     padding: 20,

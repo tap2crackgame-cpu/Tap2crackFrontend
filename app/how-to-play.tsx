@@ -4,6 +4,7 @@ import { BookOpen } from "lucide-react-native";
 import { Link } from "expo-router";
 import SeoHead from "@/components/SeoHead";
 import SemanticHeading from "@/components/SemanticHeading";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const STEPS = [
   {
@@ -49,11 +50,12 @@ const PRIZE_TYPES = [
 ];
 
 export default function HowToPlayScreen() {
+  const page = useResponsive();
   return (
     <SafeAreaView style={styles.container}>
       <SeoHead page="howToPlay" />
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.iconWrap}>
               <BookOpen size={28} color="#FFD700" />

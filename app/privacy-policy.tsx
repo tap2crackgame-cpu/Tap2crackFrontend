@@ -3,13 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Shield } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
 import SeoHead from "@/components/SeoHead";
+import { useResponsive } from "@/hooks/useResponsive";
 
 export default function PrivacyPolicyScreen() {
+  const page = useResponsive();
   return (
     <SafeAreaView style={styles.container}>
       <SeoHead page="privacy" />
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.iconWrap}>
               <Shield size={28} color="#4ECDC4" />

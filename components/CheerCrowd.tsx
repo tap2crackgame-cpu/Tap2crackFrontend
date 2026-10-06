@@ -1,8 +1,7 @@
 import React, { memo, useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, StyleSheet, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from "react-native";
 import { Circle, Ellipse, Path } from "react-native-svg";
 import { Clucky, INK } from "./landing/Mascot";
-import { EmojiRain } from "./CluckyReactions";
 
 /** Happy closed eyes, drawn over Clucky's normal face. */
 const FAN_EYES = (
@@ -21,83 +20,111 @@ const FAN_HAT = (
   </>
 );
 
-type Slot = { x: number; b: number; s: number; ms: number; hat?: boolean };
-// Order = order they show up: 1st chicken, 2nd, 3rd, 4th, then the rest arrive together as the crowd.
-const SLOTS: Slot[] = [
-  { x: 8, b: 14, s: 84, ms: 340 },
-  { x: 80, b: 14, s: 84, ms: 300, hat: true },
-  { x: 24, b: 78, s: 64, ms: 360 },
-  { x: 64, b: 84, s: 64, ms: 320, hat: true },
-  { x: 42, b: 6, s: 72, ms: 310 },
-  { x: 53, b: 96, s: 52, ms: 380 },
-  { x: 3, b: 100, s: 56, ms: 330 },
-  { x: 90, b: 98, s: 56, ms: 350, hat: true },
-  { x: 15, b: 156, s: 44, ms: 300 },
-  { x: 75, b: 162, s: 46, ms: 340 },
-  { x: 35, b: 146, s: 42, ms: 360, hat: true },
-  { x: 58, b: 156, s: 44, ms: 320 },
-  { x: 92, b: 36, s: 60, ms: 290 },
-  { x: 30, b: 34, s: 60, ms: 370, hat: true },
+/** Spots around the egg stage edges where a chicken can peek in (side + height from bottom as a fraction). */
+const SPOTS: { side: "left" | "right"; bottom: number; hat: boolean }[] = [
+  { side: "left", bottom: 0.04, hat: false },
+  { side: "right", bottom: 0.1, hat: true },
+  { side: "left", bottom: 0.42, hat: true },
+  { side: "right", bottom: 0.5, hat: false },
 ];
-const CROWD = 5;
 
-/** 0 = nobody, 1..4 = that many chickens, 5 = the whole crowd. Driven by your taps OR how cracked the egg is. */
+type Peek = { id: number; spot: number };
+
+/** Keep the old export so nothing else breaks: 0 = quiet, higher = more excitement. */
 export function cheerStage(taps: number, progress: number) {
-  const t = taps >= 20 ? CROWD : taps >= 12 ? 4 : taps >= 8 ? 3 : taps >= 4 ? 2 : taps >= 1 ? 1 : 0;
-  const p = progress >= 60 ? CROWD : progress >= 48 ? 4 : progress >= 35 ? 3 : progress >= 22 ? 2 : progress >= 10 ? 1 : 0;
-  return Math.max(t, p);
+  if (taps >= 20 || progress >= 60) return 2;
+  if (taps >= 1 || progress >= 10) return 1;
+  return 0;
 }
 
-function Fan({ slot, width, still }: { slot: Slot; width: number; still: boolean }) {
-  const pop = useRef(new Animated.Value(0)).current;
-  const hop = useRef(new Animated.Value(0)).current;
+function PeekingChicken({ spot, size, onDone }: { spot: number; size: number; onDone: () => void }) {
+  const v = useRef(new Animated.Value(0)).current;
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  const { side, bottom, hat } = SPOTS[spot];
+
   useEffect(() => {
-    Animated.spring(pop, { toValue: 1, friction: 5, tension: 90, useNativeDriver: true }).start();
-    if (still) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(hop, { toValue: 1, duration: slot.ms, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(hop, { toValue: 0, duration: slot.ms, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pop, hop, slot.ms, still]);
+    const anim = Animated.sequence([
+      Animated.timing(v, { toValue: 1, duration: 380, easing: Easing.out(Easing.back(1.4)), useNativeDriver: true }),
+      Animated.delay(1600),
+      Animated.timing(v, { toValue: 0, duration: 320, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+    ]);
+    anim.start(({ finished }) => finished && doneRef.current());
+    return () => anim.stop();
+  }, [v]);
+
+  const dir = side === "left" ? -1 : 1;
   return (
     <Animated.View
       style={{
-        position: "absolute", left: (slot.x / 100) * width - slot.s / 2, bottom: slot.b, opacity: pop,
+        position: "absolute",
+        [side]: 0,
+        bottom: `${Math.round(bottom * 100)}%` as const,
+        opacity: v.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.9, 0.9] }),
         transform: [
-          { translateY: pop.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }) },
-          { scale: pop },
-          { translateY: hop.interpolate({ inputRange: [0, 1], outputRange: [0, -slot.s * 0.16] }) },
-          { rotate: hop.interpolate({ inputRange: [0, 1], outputRange: ["-8deg", "8deg"] }) },
+          // slides in from the side edge, with a small head tilt
+          { translateX: v.interpolate({ inputRange: [0, 1], outputRange: [dir * size * 0.6, 0] }) },
+          { rotate: v.interpolate({ inputRange: [0, 1], outputRange: [`${dir * 25}deg`, `${dir * 8}deg`] }) },
         ],
       }}
     >
-      <Clucky size={slot.s} label="Cheering chicken" overlay={slot.hat ? FAN_HAT : FAN_EYES} />
+      <Clucky size={size} label="Chicken peeking in" overlay={hat ? FAN_HAT : FAN_EYES} />
     </Animated.View>
   );
 }
 
 /**
- * Silent cheering section behind the egg: 1 → 2 → 3 → 4 chickens, then a whole crowd.
- * Goes away on its own when a new round resets taps and progress.
+ * A chicken (two when the egg is hot) peeks in at the side of the egg every few seconds while people are tapping.
+ * Lives inside the egg stage, so it scrolls away with the page and never covers the egg itself.
  */
-function CheerCrowd({ taps, progress, hidden = false }: { taps: number; progress: number; hidden?: boolean }) {
-  const { width, height } = useWindowDimensions();
+function CheerCrowd({ taps, progress, hidden = false, size = 52 }: { taps: number; progress: number; hidden?: boolean; size?: number }) {
   const [still, setStill] = useState(false);
+  const [peeks, setPeeks] = useState<Peek[]>([]);
+  const idRef = useRef(0);
+  const stage = hidden ? 0 : cheerStage(taps, progress);
+  const active = stage > 0 && !still;
+  const maxAtOnce = stage >= 2 ? 2 : 1;
+  const maxRef = useRef(maxAtOnce);
+  maxRef.current = maxAtOnce;
+
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setStill).catch(() => {});
   }, []);
-  const stage = hidden ? 0 : cheerStage(taps, progress);
-  if (stage === 0) return null;
-  const count = stage >= CROWD ? SLOTS.length : stage;
+
+  useEffect(() => {
+    if (!active) {
+      setPeeks([]);
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = (first: boolean) => {
+      // First peek soon after tapping starts, then every ~6–10s.
+      const wait = first ? 1200 : 6000 + Math.random() * 4000;
+      timer = setTimeout(() => {
+        setPeeks((prev) => {
+          if (prev.length >= maxRef.current) return prev;
+          const used = new Set(prev.map((p) => p.spot));
+          const free = SPOTS.map((_, i) => i).filter((i) => !used.has(i));
+          const spot = free[Math.floor(Math.random() * free.length)];
+          return [...prev, { id: idRef.current++, spot }];
+        });
+        schedule(false);
+      }, wait);
+    };
+    schedule(true);
+    return () => clearTimeout(timer);
+  }, [active]);
+
+  if (!active || peeks.length === 0) return null;
   return (
     <View pointerEvents="none" style={styles.root}>
-      {stage >= CROWD && <EmojiRain emojis={["🎉", "📣", "👏", "🔥", "🥚"]} count={8} height={height} />}
-      {SLOTS.slice(0, count).map((slot, i) => (
-        <Fan key={i} slot={slot} width={width} still={still} />
+      {peeks.map((p) => (
+        <PeekingChicken
+          key={p.id}
+          spot={p.spot}
+          size={size}
+          onDone={() => setPeeks((prev) => prev.filter((x) => x.id !== p.id))}
+        />
       ))}
     </View>
   );
@@ -105,4 +132,4 @@ function CheerCrowd({ taps, progress, hidden = false }: { taps: number; progress
 
 export default memo(CheerCrowd);
 
-const styles = StyleSheet.create({ root: { ...StyleSheet.absoluteFillObject, zIndex: 0, opacity: 0.95 } });
+const styles = StyleSheet.create({ root: { ...StyleSheet.absoluteFillObject, zIndex: 1, overflow: "hidden" } });

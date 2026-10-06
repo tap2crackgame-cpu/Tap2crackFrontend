@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Animated, Easing, StyleSheet, Text, Platform, AccessibilityInfo } from 'react-native';
+import { View, Animated, Easing, StyleSheet, Text, Platform, AccessibilityInfo, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface ProgressBarProps {
@@ -10,6 +11,30 @@ interface ProgressBarProps {
 
 const IS_WEB = Platform.OS === 'web';
 
+/** One flame tongue (viewBox 20x32): outer orange-red body with a bright yellow core. */
+const FLAME_OUTER = 'M10 32 C3 32 0 26 1.5 20 C3 14 7 12 7 3 C12 8 13 11 13.5 14 C15 12 15.5 10 15 7 C19 12 20 18 18.5 24 C17.5 29 14 32 10 32 Z';
+const FLAME_INNER = 'M10 31 C6 31 4.5 27.5 5.5 24 C6.5 21 9 19.5 9.5 15 C12.5 18 15 21 14.5 25.5 C14 29 12.5 31 10 31 Z';
+
+const FlameTongue = memo(function FlameTongue({ w, h, hot }: { w: number; h: number; hot: boolean }) {
+  return (
+    <Svg width={w} height={h} viewBox="0 0 20 32">
+      <Defs>
+        <SvgGradient id="t2cFlameOuter" x1="0" y1="1" x2="0" y2="0">
+          <Stop offset="0" stopColor={hot ? '#D50000' : '#E65100'} />
+          <Stop offset="0.55" stopColor={hot ? '#FF3D00' : '#FF6D00'} />
+          <Stop offset="1" stopColor="#FFAB00" stopOpacity={0.85} />
+        </SvgGradient>
+        <SvgGradient id="t2cFlameInner" x1="0" y1="1" x2="0" y2="0">
+          <Stop offset="0" stopColor="#FFF59D" />
+          <Stop offset="1" stopColor="#FFD600" stopOpacity={0.6} />
+        </SvgGradient>
+      </Defs>
+      <Path d={FLAME_OUTER} fill="url(#t2cFlameOuter)" />
+      <Path d={FLAME_INNER} fill="url(#t2cFlameInner)" />
+    </Svg>
+  );
+});
+
 function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
   const cleanProgress = Number.isFinite(progress) ? progress : 0;
   const raw = Math.min(Math.max(cleanProgress, 0), 100);
@@ -18,8 +43,16 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
 
   const animatedProgress = useRef(new Animated.Value(clampedProgress)).current;
   const borderPulse = useRef(new Animated.Value(0)).current;
-  const flick = useRef(new Animated.Value(0)).current; // drives every flame + the glow (transform/opacity only)
+  const flick = useRef(new Animated.Value(0)).current; // drives the glow on the fill
+  // Three out-of-phase flickers shared by all flame tongues (cheap: transform/opacity on the native driver).
+  const flickA = useRef(new Animated.Value(0)).current;
+  const flickB = useRef(new Animated.Value(0)).current;
+  const flickC = useRef(new Animated.Value(0)).current;
   const [still, setStill] = useState(false);
+  const [barW, setBarW] = useState(0);
+  const { width: screenW } = useWindowDimensions();
+  const compact = screenW < 420;
+  const onBarLayout = (e: LayoutChangeEvent) => setBarW(e.nativeEvent.layout.width);
 
   useEffect(() => {
     animatedProgress.setValue(clampedProgress);
@@ -31,16 +64,23 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
 
   useEffect(() => {
     if (still || clampedProgress <= 0) return;
-    const ms = clampedProgress >= 70 ? 170 : 260; // hotter = faster flicker
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(flick, { toValue: 1, duration: ms, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(flick, { toValue: 0, duration: ms, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [flick, still, clampedProgress >= 70, clampedProgress > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+    const hot = clampedProgress >= 70; // hotter = faster flicker
+    const mk = (v: Animated.Value, ms: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(v, { toValue: 1, duration: ms, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0, duration: ms, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        ])
+      );
+    const loops = [
+      mk(flick, hot ? 170 : 260),
+      mk(flickA, hot ? 140 : 210),
+      mk(flickB, hot ? 190 : 270),
+      mk(flickC, hot ? 230 : 330),
+    ];
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [flick, flickA, flickB, flickC, still, clampedProgress >= 70, clampedProgress > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!othersActive || IS_WEB) {
@@ -61,7 +101,7 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
   // FOMO copy: the closer it is, the more it says someone else is about to grab it.
   const getNotificationText = () => {
     if (clampedProgress >= 90) return "🚨 ABOUT TO CRACK! Someone wins THIS second!";
-    if (clampedProgress >= 70) return "🔥 It's HOT! Don't let someone else steal it!";
+    if (clampedProgress >= 70) return "It's HOT! Don't let someone else steal it!";
     if (othersActive && clampedProgress >= 50) return "⚡ Everyone's tapping! Are you in?";
     if (clampedProgress >= 50) return "💪 Halfway! The next tap could be THE one!";
     if (othersActive) return "👥 Others are tapping too. Race them!";
@@ -82,31 +122,45 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
     [animatedProgress]
   );
 
-  const flameCount = clampedProgress >= 60 ? 3 : clampedProgress >= 25 ? 2 : 1;
-  const flameSize = 16 + heat * 16;
-  const flames = Array.from({ length: flameCount }, (_, i) => {
-    const flip = i % 2 === 1;
+  // A row of drawn flame tongues burning along the filled part of the bar; tallest at the leading edge.
+  const filledPx = (barW * clampedProgress) / 100;
+  const tongueW = compact ? 12 : 14;
+  const tongueCount = Math.max(1, Math.min(compact ? 28 : 40, Math.round(filledPx / (tongueW * 0.5))));
+  const baseH = (compact ? 12 : 14) + heat * (compact ? 8 : 12);
+  const phases = [flickA, flickB, flickC];
+  const isHot = clampedProgress >= 70;
+  const flames = Array.from({ length: tongueCount }, (_, i) => {
+    const v = phases[i % 3];
+    const fromTip = tongueCount - 1 - i; // 0 = leading edge
+    const tipBoost = fromTip === 0 ? 1.45 : fromTip === 1 ? 1.2 : 1;
+    const jitter = 0.8 + ((i * 37) % 10) / 25; // stable per-tongue variety
+    const h = baseH * tipBoost * jitter;
+    const w = tongueW * (fromTip === 0 ? 1.3 : 1);
+    const leftPct = tongueCount === 1 ? 100 : ((i + 1) / tongueCount) * 100;
     return (
-      <Animated.Text
+      <Animated.View
         key={i}
         style={{
-          fontSize: flameSize * (1 - i * 0.14),
-          marginRight: i === 0 ? -6 : -10,
-          opacity: flick.interpolate({ inputRange: [0, 1], outputRange: flip ? [1, 0.75] : [0.8, 1] }),
+          position: 'absolute',
+          bottom: 0,
+          left: `${leftPct}%`,
+          marginLeft: -w * 0.85,
+          transformOrigin: 'bottom',
+          opacity: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [0.95, 0.7] : [0.75, 1] }),
           transform: [
-            { scaleY: flick.interpolate({ inputRange: [0, 1], outputRange: flip ? [1.25, 0.85] : [0.85, 1.25] }) },
-            { translateY: flick.interpolate({ inputRange: [0, 1], outputRange: flip ? [-4, 0] : [0, -4] }) },
-            { rotate: flick.interpolate({ inputRange: [0, 1], outputRange: flip ? ['6deg', '-6deg'] : ['-6deg', '6deg'] }) },
+            { scaleY: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [1.15, 0.8] : [0.8, 1.2] }) },
+            { scaleX: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [0.9, 1.08] : [1.08, 0.92] }) },
+            { rotate: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? ['4deg', '-4deg'] : ['-4deg', '4deg'] }) },
           ],
-        }}
+        } as any}
       >
-        🔥
-      </Animated.Text>
+        <FlameTongue w={w} h={h} hot={isHot} />
+      </Animated.View>
     );
   });
 
   const barInner = (
-    <View style={styles.barContainer}>
+    <View style={[styles.barContainer, compact && styles.barContainerCompact]} onLayout={onBarLayout}>
       <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} style={styles.track}>
         <View style={styles.trackInner} />
       </LinearGradient>
@@ -140,8 +194,8 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
   return (
     <View style={styles.container}>
       <View style={styles.labelContainer}>
-        <Text style={[styles.notificationText, clampedProgress >= 70 && styles.notificationHot]}>{getNotificationText()}</Text>
-        <Text style={styles.progressText}>{isNaN(clampedProgress) ? 0 : Math.floor(clampedProgress)}%</Text>
+        <Text style={[styles.notificationText, compact && styles.notificationTextCompact, clampedProgress >= 70 && styles.notificationHot]} numberOfLines={2}>{getNotificationText()}</Text>
+        <Text style={[styles.progressText, compact && styles.progressTextCompact]}>{isNaN(clampedProgress) ? 0 : Math.floor(clampedProgress)}%</Text>
       </View>
 
       <View
@@ -150,12 +204,12 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
           { shadowOpacity: 0.2 + heat * 0.65, shadowRadius: 6 + heat * 16, elevation: 4 + Math.round(heat * 8) },
         ]}
       >
-        {clampedProgress > 0 && (
-          <View pointerEvents="none" style={styles.flameLayer}>
+        <Animated.View style={IS_WEB ? webBarOuterStyle : nativeBarOuterStyle}>{barInner}</Animated.View>
+        {clampedProgress > 0 && barW > 0 && !still && (
+          <View pointerEvents="none" style={[styles.flameLayer, { height: baseH * 1.8 }]}>
             <Animated.View style={[styles.flameRow, { width: fillWidth }]}>{flames}</Animated.View>
           </View>
         )}
-        <Animated.View style={IS_WEB ? webBarOuterStyle : nativeBarOuterStyle}>{barInner}</Animated.View>
       </View>
 
       <View style={styles.markersRow}>
@@ -172,9 +226,12 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
 export default memo(ProgressBar);
 
 const styles = StyleSheet.create({
-  container: { width: '100%', paddingHorizontal: 20 },
-  labelContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  container: { width: '100%' },
+  labelContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   notificationText: { flex: 1, fontSize: 14, fontWeight: '700' as const, color: '#FFD700', marginRight: 8 },
+  notificationTextCompact: { fontSize: 12 },
+  progressTextCompact: { fontSize: 14 },
+  barContainerCompact: { height: 18 },
   notificationHot: { color: '#FF8A65', fontWeight: '900' as const },
   barOuterActive: { borderWidth: 2, borderColor: '#FF8C32' },
   progressText: { fontSize: 16, fontWeight: 'bold' as const, color: '#FFFFFF' },
@@ -184,8 +241,8 @@ const styles = StyleSheet.create({
     shadowColor: '#FF6A00',
     shadowOffset: { width: 0, height: 0 },
   },
-  flameLayer: { position: 'absolute', left: 0, right: 0, top: -22, height: 30, zIndex: 3 },
-  flameRow: { height: 30, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-end' },
+  flameLayer: { position: 'absolute', left: 0, right: 0, bottom: '55%', zIndex: 3 },
+  flameRow: { height: '100%', position: 'relative' },
   barOuter: { borderRadius: 14, overflow: 'hidden' },
   barContainer: { height: 24, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   track: { flex: 1, borderRadius: 12 },

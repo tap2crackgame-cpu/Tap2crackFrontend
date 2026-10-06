@@ -4,6 +4,7 @@ import { Trophy, Share2, Sparkles } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
 import { useWinnersQuery } from "@/hooks/useWinnersQuery";
 import { Winner, formatWinnerPrizeLabel, formatWinnerPrizeAmount, displayWinnerName } from "@/types/game";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const ICONS: Record<string, string> = {
   airtime: "\u{1F4F1}",
@@ -13,6 +14,7 @@ const ICONS: Record<string, string> = {
 };
 
 export default function Tap2CrackWinners() {
+  const page = useResponsive();
   const { data: winners = [], isLoading } = useWinnersQuery(50);
 
   const onShare = async (w: Winner) => {
@@ -64,7 +66,7 @@ export default function Tap2CrackWinners() {
           <Text style={styles.subtitle}>Celebrate the egg crackers!</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           {isLoading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator size="large" color="#FFD700" />

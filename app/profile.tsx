@@ -15,6 +15,7 @@ import { type DbWinner, getUserSettlementLabel, isPrizeSettled } from "@/types/g
 import { getAuthApi } from "@/utils/api";
 import { resolveUserStats, formatStat } from "@/utils/userStats";
 import { useGoogleAuth } from "@/hooks/googleLogin";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const PUNS = [
   "You're egg-straordinary!",
@@ -24,6 +25,7 @@ const PUNS = [
 ];
 
 export default function Tap2CrackProfile() {
+  const page = useResponsive();
   const router = useRouter();
   const { authUser, setAuthUser, logout, token, refreshProfile, loginWithGuestToken } = useAuth();
   const { user } = userUserProfile();
@@ -89,7 +91,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           <View style={styles.profile}>
             <View style={styles.avatarWrap}>
               <Text style={styles.avatar}>{user.name?.[0] || "\u{1F464}"}</Text>

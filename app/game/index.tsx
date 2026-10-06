@@ -98,12 +98,10 @@ export default function Tap2CrackGame() {
   const [tapCount, setTapCount] = useState(0);
   const [consecutiveTaps, setConsecutiveTaps] = useState(0);
   const consecutiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [lastTapPosition, setLastTapPosition] = useState<{ x: number; y: number } | null>(null);
   const tapCountRef = useRef(0);
   const consecutiveRef = useRef(0);
   const tapUiRafRef = useRef<number | null>(null);
   const lastFlashAtRef = useRef(0);
-  const flashColorsRef = useRef(['#FFD700', '#FFA500', '#FF6B6B', '#4ECDC4', '#FFE66D']);
   const scrollViewRef = useRef<ScrollView>(null);
   const noop = useCallback(() => {}, []);
   const { authUser: user, token, refreshProfile } = useAuth();
@@ -154,7 +152,6 @@ export default function Tap2CrackGame() {
   
   // Background flash animation
   const flashAnim = useRef(new Animated.Value(0)).current;
-  const [flashColor, setFlashColor] = useState('#FFFFFF');
   
   // Test mode state
   const [testMode, setTestMode] = useState(false);
@@ -275,23 +272,35 @@ export default function Tap2CrackGame() {
 
   const stageWidth = Math.min(contentMax, 560);
   const isPhone = width < 420;
+  const isShort = height < 760;
+
+  // Size the egg so the header, egg and progress bar all fit on one phone screen.
+  // Space reserved for: header (~52) + nav (~46) + prize row (~56) + egg label (~44) + progress bar (~86) + breathing room.
+  const reservedH = 52 + 46 + 56 + 44 + 86 + 24;
+  const eggH = Math.max(150, Math.min(isShort ? 230 : 250, height - reservedH));
+  const eggW = Math.round(eggH * (180 / 220));
+  // Non-normal eggs show an extra frequency badge under the egg name.
+  const eggHasBadge = !!currentEgg && currentEgg.egg.type !== "normal" && currentEgg.egg.type !== "no-powerup";
+  const stageHeight = eggH + (isShort ? 48 : 64) + (eggHasBadge ? 26 : 0);
+  const chickenSize = isPhone ? 44 : 56;
 
   const laneStyles = useMemo(() => {
     const sidePush = isPhone ? 6 : 18;
+    const k = stageHeight / 360; // lanes were designed for a 360px stage
     const outLeft = -Math.max(22, Math.round(stageWidth * (isPhone ? 0.08 : 0.18))) - sidePush;
     const outRight = outLeft;
     const nearLeft = -Math.max(10, Math.round(stageWidth * (isPhone ? 0.04 : 0.12))) - sidePush;
     const nearRight = nearLeft;
 
     return [
-      { top: 58, left: nearLeft },
-      { top: 108, right: nearRight },
-      { top: 170, left: outLeft },
-      { top: 220, right: outRight },
-      { top: 286, left: nearLeft },
-      { top: 318, right: nearRight },
+      { top: Math.round(20 * k), left: nearLeft },
+      { top: Math.round(80 * k), right: nearRight },
+      { top: Math.round(150 * k), left: outLeft },
+      { top: Math.round(210 * k), right: outRight },
+      { top: Math.round(270 * k), left: nearLeft },
+      { top: Math.round(310 * k), right: nearRight },
     ] as const;
-  }, [isPhone, stageWidth]);
+  }, [isPhone, stageWidth, stageHeight]);
 
   const popupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [powerUpPopups, setPowerUpPopups] = useState<Array<{
@@ -362,9 +371,6 @@ export default function Tap2CrackGame() {
   }, [onlineUsers, popupsEligible, spawnPowerUpPopup]);
 
   const triggerFlash = useCallback((intensity: number = 1) => {
-    const colors = flashColorsRef.current;
-    setFlashColor(colors[Math.floor(Math.random() * colors.length)]);
-    
     Animated.sequence([
       Animated.timing(flashAnim, {
         toValue: 0.08 * intensity,
@@ -386,7 +392,6 @@ export default function Tap2CrackGame() {
     consecutiveRef.current += 1;
     const n = tapCountRef.current;
 
-    setLastTapPosition({ x, y });
     scheduleTapUi();
 
     if (consecutiveTimerRef.current) {
@@ -474,7 +479,7 @@ export default function Tap2CrackGame() {
           style={[
             styles.flashOverlay,
             {
-              backgroundColor: flashColor,
+              backgroundColor: '#FFD27A',
               opacity: flashAnim,
             },
           ]} 
@@ -483,8 +488,6 @@ export default function Tap2CrackGame() {
         {(activePowerUp || currentEgg.isHappyHour) && (
           <PowerUpBackground activePowerUp={activePowerUp} isHappyHour={currentEgg.isHappyHour} />
         )}
-        <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown} />
-        <TapFeedback tapCount={tapCount} consecutiveTaps={consecutiveTaps} lastTapPosition={lastTapPosition} tapMultiplier={activePowerUp?.multiplier || (currentEgg.isHappyHour ? 2 : 1)} crackProgress={progressPct} />
 
         {showDesktopRails ? (
           <View style={[styles.desktopRailLeft, { top: Math.min(height * 0.26, height * 0.5 - 140) }]} pointerEvents="box-none">
@@ -615,7 +618,7 @@ export default function Tap2CrackGame() {
           <OnlineUsers count={onlineUsers} />
         </View>
 
-        <View style={[styles.navRow, { paddingHorizontal: padH, gap: navGap, marginBottom: width < 400 ? 10 : 16 }]}>
+        <View style={[styles.navRow, { paddingHorizontal: padH, gap: navGap, marginBottom: isShort ? 6 : width < 400 ? 10 : 16 }]}>
           <TouchableOpacity style={[styles.navBtn, width < 380 && styles.navBtnSm]} onPress={() => router.push("/leaderboard")}>
             <Trophy size={width < 380 ? 18 : 20} color="#FFD700" />
             <Text style={[styles.navText, width < 380 && styles.navTextSm]}>Rank</Text>
@@ -637,8 +640,8 @@ export default function Tap2CrackGame() {
         >
           <View style={[styles.gameMainColumn, { maxWidth: contentMax, width: isWideWeb ? contentMax : "100%" }]}>
           {currentEgg && currentEgg.egg.type === 'normal' && (
-            <>
-              <View style={styles.prizeTypeBadge}>
+            <View style={[styles.prizeRow, isShort && styles.prizeRowCompact]}>
+              <View style={[styles.prizeTypeBadge, isShort && styles.prizeTypeBadgeCompact]}>
                 <Text style={styles.prizeTypeIcon}>{getPrizeIcon()}</Text>
                 <Text style={styles.prizeTypeText}>
                   Win {currentEgg.prize.type === 'airtime' ? 'Airtime' : 
@@ -646,13 +649,14 @@ export default function Tap2CrackGame() {
                        currentEgg.prize.type === 'cash' ? 'Cash' : 'Prize'}
                 </Text>
               </View>
-              <View style={styles.prizeIndicatorContainer}>
+              <View style={[styles.prizeIndicatorContainer, isShort && styles.prizeIndicatorCompact]}>
                 <PrizeIndicator 
                   prize={currentEgg.prize} 
                   eggType={currentEgg.egg.type} 
+                  compact={isShort}
                 />
               </View>
-            </>
+            </View>
           )}
 
           {currentEgg && currentEgg.egg.type !== 'normal' && (
@@ -664,7 +668,8 @@ export default function Tap2CrackGame() {
 
           {currentEgg && (
             <>
-              <View style={[styles.eggStage, { width: stageWidth }]}>
+              <View style={[styles.eggStage, { width: stageWidth, height: stageHeight }]}>
+                <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown} size={chickenSize} />
                 {powerUpPopups.length > 0 && (
                   <View pointerEvents="none" style={styles.powerUpPopupsLayer}>
                     {powerUpPopups.map(p => (
@@ -710,8 +715,19 @@ export default function Tap2CrackGame() {
                     isCooldown={mainEgg.isCooldown}
                     isLoser={testMode && testIsLoser}
                     testCrackLevel={testMode ? testCrackLevel : null}
+                    size={eggW}
+                    compact={isShort}
                   />
                 </View>
+                <TapFeedback
+                  tapCount={tapCount}
+                  consecutiveTaps={consecutiveTaps}
+                  tapMultiplier={activePowerUp?.multiplier || (currentEgg.isHappyHour ? 2 : 1)}
+                  crackProgress={progressPct}
+                  centerX={stageWidth / 2}
+                  centerY={Math.round((stageHeight - eggH) / 2 + eggH * 0.3)}
+                  compact={isPhone}
+                />
               </View>
             </>
           )}
@@ -734,7 +750,7 @@ export default function Tap2CrackGame() {
             <View style={[styles.liveIndicator, { marginHorizontal: padH }]}>
               <Flame size={16} color="#FF6B00" />
               <Text style={styles.liveIndicatorText}>
-                🔥 {onlineUsers} Players Tapping Live
+                {onlineUsers} Players Tapping Live
               </Text>
             </View>
           )}
@@ -1122,9 +1138,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  prizeRow: {
+    alignItems: 'center',
+  },
+  prizeRowCompact: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  prizeTypeBadgeCompact: {
+    marginBottom: 0,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  prizeIndicatorCompact: {
+    marginBottom: 0,
+  },
   eggStage: {
     alignSelf: "center",
-    height: 360,
     position: "relative",
     justifyContent: "center",
     alignItems: "center",
@@ -1229,7 +1262,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFD700',
     width: 18,
   },
-  progressWrap: { width: "100%", marginTop: 6 },
+  progressWrap: { width: "100%", marginTop: 14 },
   liveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',

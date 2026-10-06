@@ -10,8 +10,10 @@ import { fetchLeaderboard } from "@/services/fetchleaderboard";
 import { EGG_RANKS } from "@/types/game";
 import BengzFooter from "@/components/BengzFooter";
 import { resolveUserStats, formatStat } from "@/utils/userStats";
+import { useResponsive } from "@/hooks/useResponsive";
 
 export default function Tap2CrackLeaderboard() {
+  const page = useResponsive();
   const { authUser: user, token, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
 
@@ -61,7 +63,7 @@ export default function Tap2CrackLeaderboard() {
           <Text style={styles.subtitle}>Most eggs cracked</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           {user && (
             <View style={styles.userBox}>
               <Text style={styles.userRankLabel}>

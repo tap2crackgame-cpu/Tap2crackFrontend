@@ -7,6 +7,8 @@ import { Prize, EggType } from '@/types/game';
 interface PrizeIndicatorProps {
   prize: Prize;
   eggType: EggType;
+  /** Smaller badge for short phone screens. */
+  compact?: boolean;
 }
 
 const PRIZE_CONFIGS: Record<string, { 
@@ -45,7 +47,7 @@ const EGG_TYPE_CONFIGS: Record<EggType, { icon: React.ReactNode; color: string; 
   business: { icon: <Briefcase size={14} color="#FFFFFF" />, color: '#4ECDC4', label: 'Business' },
 };
 
-export default function PrizeIndicator({ prize, eggType }: PrizeIndicatorProps) {
+export default function PrizeIndicator({ prize, eggType, compact = false }: PrizeIndicatorProps) {
   const config = PRIZE_CONFIGS[prize.type] || PRIZE_CONFIGS.sponsor;
   const eggConfig = EGG_TYPE_CONFIGS[eggType];
   const maskedValue =
@@ -59,14 +61,14 @@ export default function PrizeIndicator({ prize, eggType }: PrizeIndicatorProps) 
         colors={config.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.badge}
+        style={[styles.badge, compact && styles.badgeCompact]}
       >
-        <View style={styles.iconContainer}>
+        <View style={[styles.iconContainer, compact && styles.iconContainerCompact]}>
           {config.icon}
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.label}>{config.label}</Text>
-          <Text style={styles.value}>{maskedValue}</Text>
+          <Text style={[styles.value, compact && styles.valueCompact]}>{maskedValue}</Text>
         </View>
       </LinearGradient>
       
@@ -101,6 +103,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  badgeCompact: { paddingVertical: 5, paddingHorizontal: 10, gap: 6, borderRadius: 12 },
+  iconContainerCompact: { width: 26, height: 26, borderRadius: 13 },
+  valueCompact: { fontSize: 14 },
   textContainer: {
     alignItems: 'flex-start',
   },

@@ -118,10 +118,14 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    padding: 40,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    width: '100%',
+    maxWidth: 440,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
+    textAlign: 'center',
     fontWeight: 'bold',
     color: '#FFD700',
     marginBottom: 8,
@@ -129,7 +133,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.7)',
-    marginBottom: 40,
+    marginBottom: 28,
+    textAlign: 'center',
   },
   timerContainer: {
     alignItems: 'center',
@@ -141,7 +146,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   timer: {
-    fontSize: 64,
+    fontSize: 56,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },

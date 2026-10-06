@@ -8,8 +8,10 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchUserPrizes } from "@/services/userPrizes";
 import type { DbWinner } from "@/types/game";
 import { getUserSettlementLabel, isPrizeSettled } from "@/types/game";
+import { useResponsive } from "@/hooks/useResponsive";
 
 export default function PrizesPage() {
+  const page = useResponsive();
   const router = useRouter();
   const { authUser, token } = useAuth();
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export default function PrizesPage() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Your Prizes</Text>
           <Text style={styles.subtitle}>Tap a prize to copy its code (if available).</Text>
 

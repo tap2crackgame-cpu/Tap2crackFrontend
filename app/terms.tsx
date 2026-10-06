@@ -3,13 +3,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { FileText } from "lucide-react-native";
 import BengzFooter from "@/components/BengzFooter";
 import SeoHead from "@/components/SeoHead";
+import { useResponsive } from "@/hooks/useResponsive";
 
 export default function TermsScreen() {
+  const page = useResponsive();
   return (
     <SafeAreaView style={styles.container}>
       <SeoHead page="terms" />
       <LinearGradient colors={["#1a1a2e", "#16213e", "#0f3460"]} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.content, page.content]} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.iconWrap}>
               <FileText size={28} color="#FFD700" />

@@ -166,9 +166,9 @@ export default function PhonePrompt() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  content: { width: "100%", paddingHorizontal: 30, alignItems: "center" },
+  content: { width: "100%", maxWidth: 460, paddingHorizontal: 20, alignItems: "center" },
   title: {
-    fontSize: 42,
+    fontSize: 36,
     fontWeight: "bold" as const,
     color: "#FFF",
     marginBottom: 8,
