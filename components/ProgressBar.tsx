@@ -11,26 +11,51 @@ interface ProgressBarProps {
 
 const IS_WEB = Platform.OS === 'web';
 
-/** One flame tongue (viewBox 20x32): outer orange-red body with a bright yellow core. */
-const FLAME_OUTER = 'M10 32 C3 32 0 26 1.5 20 C3 14 7 12 7 3 C12 8 13 11 13.5 14 C15 12 15.5 10 15 7 C19 12 20 18 18.5 24 C17.5 29 14 32 10 32 Z';
-const FLAME_INNER = 'M10 31 C6 31 4.5 27.5 5.5 24 C6.5 21 9 19.5 9.5 15 C12.5 18 15 21 14.5 25.5 C14 29 12.5 31 10 31 Z';
+/** Stable pseudo-random 0.45..1 so the flame shape doesn't jump around between renders. */
+const rnd = (n: number) => {
+  const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  return 0.45 + 0.55 * (x - Math.floor(x));
+};
 
-const FlameTongue = memo(function FlameTongue({ w, h, hot }: { w: number; h: number; hot: boolean }) {
+/**
+ * One continuous wall of flame across the filled width: many overlapping pointed peaks,
+ * fading in at the left and tallest at the leading edge, so it reads as fire rather than icons.
+ */
+function fireBandPath(bandW: number, H: number, peakW: number, hScale: number, seed: number) {
+  const k = Math.max(3, Math.round(bandW / peakW));
+  const w = bandW / k;
+  let d = `M0 ${H}`;
+  for (let j = 0; j < k; j++) {
+    const x0 = j * w;
+    const xc = (x0 + w / 2) / bandW; // 0..1 along the band
+    const rampIn = Math.min(1, (x0 + w / 2) / 18);
+    const tipBoost = xc > 0.85 ? 1 + ((xc - 0.85) / 0.15) * 0.45 : 1;
+    // Body flames use ~72% of the height so the taller leading-edge flames still fit without being cut off.
+    const h = Math.min(H * 0.98, H * hScale * 0.72 * rnd(seed + j) * rampIn * tipBoost);
+    const lean = 0.5 + (rnd(seed * 3 + j) - 0.725) * 0.6; // tips lean a little left/right
+    const endY = j === k - 1 ? H : H - h * 0.42;
+    const tipX = x0 + w * lean;
+    // Rounded, bulging sides that pinch to a curled tip, like a real flame tongue.
+    d += ` C ${(x0 + w * 0.02).toFixed(1)} ${(H - h * 0.5).toFixed(1)} ${(tipX - w * 0.25).toFixed(1)} ${(H - h * 0.8).toFixed(1)} ${tipX.toFixed(1)} ${(H - h).toFixed(1)}`;
+    d += ` C ${(tipX + w * 0.2).toFixed(1)} ${(H - h * 0.72).toFixed(1)} ${(x0 + w * 1.02).toFixed(1)} ${(H - h * 0.5).toFixed(1)} ${(x0 + w).toFixed(1)} ${endY.toFixed(1)}`;
+  }
+  return `${d} L${bandW.toFixed(1)} ${H} Z`;
+}
+
+const FireLayer = memo(function FireLayer({
+  bandW, H, peakW, hScale, seed, id, stops,
+}: { bandW: number; H: number; peakW: number; hScale: number; seed: number; id: string; stops: [string, string, string] }) {
+  const d = useMemo(() => fireBandPath(bandW, H, peakW, hScale, seed), [bandW, H, peakW, hScale, seed]);
   return (
-    <Svg width={w} height={h} viewBox="0 0 20 32">
+    <Svg width={bandW} height={H}>
       <Defs>
-        <SvgGradient id="t2cFlameOuter" x1="0" y1="1" x2="0" y2="0">
-          <Stop offset="0" stopColor={hot ? '#D50000' : '#E65100'} />
-          <Stop offset="0.55" stopColor={hot ? '#FF3D00' : '#FF6D00'} />
-          <Stop offset="1" stopColor="#FFAB00" stopOpacity={0.85} />
-        </SvgGradient>
-        <SvgGradient id="t2cFlameInner" x1="0" y1="1" x2="0" y2="0">
-          <Stop offset="0" stopColor="#FFF59D" />
-          <Stop offset="1" stopColor="#FFD600" stopOpacity={0.6} />
+        <SvgGradient id={id} x1="0" y1="1" x2="0" y2="0">
+          <Stop offset="0" stopColor={stops[0]} />
+          <Stop offset="0.55" stopColor={stops[1]} />
+          <Stop offset="1" stopColor={stops[2]} stopOpacity={0.75} />
         </SvgGradient>
       </Defs>
-      <Path d={FLAME_OUTER} fill="url(#t2cFlameOuter)" />
-      <Path d={FLAME_INNER} fill="url(#t2cFlameInner)" />
+      <Path d={d} fill={`url(#${id})`} />
     </Svg>
   );
 });
@@ -44,7 +69,7 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
   const animatedProgress = useRef(new Animated.Value(clampedProgress)).current;
   const borderPulse = useRef(new Animated.Value(0)).current;
   const flick = useRef(new Animated.Value(0)).current; // drives the glow on the fill
-  // Three out-of-phase flickers shared by all flame tongues (cheap: transform/opacity on the native driver).
+  // Three out-of-phase flickers, one per flame layer (cheap: transform/opacity on the native driver).
   const flickA = useRef(new Animated.Value(0)).current;
   const flickB = useRef(new Animated.Value(0)).current;
   const flickC = useRef(new Animated.Value(0)).current;
@@ -122,42 +147,40 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
     [animatedProgress]
   );
 
-  // A row of drawn flame tongues burning along the filled part of the bar; tallest at the leading edge.
-  const filledPx = (barW * clampedProgress) / 100;
-  const tongueW = compact ? 12 : 14;
-  const tongueCount = Math.max(1, Math.min(compact ? 28 : 40, Math.round(filledPx / (tongueW * 0.5))));
-  const baseH = (compact ? 12 : 14) + heat * (compact ? 8 : 12);
-  const phases = [flickA, flickB, flickC];
+  // Three stacked layers of flame (deep red, orange, yellow core) burning along the filled part of the bar.
+  // Each layer flickers on its own phase, which makes the wall of fire look alive.
+  const filledPx = Math.round((barW * clampedProgress) / 100);
+  const bandW = Math.max(10, filledPx);
+  const fireH = Math.round((compact ? 20 : 26) + heat * (compact ? 12 : 16));
+  const peakW = compact ? 13 : 16;
   const isHot = clampedProgress >= 70;
-  const flames = Array.from({ length: tongueCount }, (_, i) => {
-    const v = phases[i % 3];
-    const fromTip = tongueCount - 1 - i; // 0 = leading edge
-    const tipBoost = fromTip === 0 ? 1.45 : fromTip === 1 ? 1.2 : 1;
-    const jitter = 0.8 + ((i * 37) % 10) / 25; // stable per-tongue variety
-    const h = baseH * tipBoost * jitter;
-    const w = tongueW * (fromTip === 0 ? 1.3 : 1);
-    const leftPct = tongueCount === 1 ? 100 : ((i + 1) / tongueCount) * 100;
-    return (
-      <Animated.View
-        key={i}
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: `${leftPct}%`,
-          marginLeft: -w * 0.85,
-          transformOrigin: 'bottom',
-          opacity: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [0.95, 0.7] : [0.75, 1] }),
-          transform: [
-            { scaleY: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [1.15, 0.8] : [0.8, 1.2] }) },
-            { scaleX: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? [0.9, 1.08] : [1.08, 0.92] }) },
-            { rotate: v.interpolate({ inputRange: [0, 1], outputRange: i % 2 ? ['4deg', '-4deg'] : ['-4deg', '4deg'] }) },
-          ],
-        } as any}
-      >
-        <FlameTongue w={w} h={h} hot={isHot} />
-      </Animated.View>
-    );
+  const layer = (v: Animated.Value, flip: boolean) => ({
+    position: 'absolute' as const,
+    left: 0,
+    bottom: 0,
+    transformOrigin: 'bottom',
+    opacity: v.interpolate({ inputRange: [0, 1], outputRange: flip ? [1, 0.82] : [0.85, 1] }),
+    transform: [
+      { scaleY: v.interpolate({ inputRange: [0, 1], outputRange: flip ? [1.12, 0.86] : [0.88, 1.14] }) },
+      { translateX: v.interpolate({ inputRange: [0, 1], outputRange: flip ? [1.5, -1.5] : [-1.5, 1.5] }) },
+    ],
   });
+  const flames = (
+    <>
+      <Animated.View style={layer(flickA, false) as any}>
+        <FireLayer bandW={bandW} H={fireH} peakW={peakW} hScale={1} seed={1} id="t2cFireOuter"
+          stops={isHot ? ['#B71C1C', '#FF3D00', '#FF9100'] : ['#D84315', '#FF6D00', '#FFAB00']} />
+      </Animated.View>
+      <Animated.View style={layer(flickB, true) as any}>
+        <FireLayer bandW={bandW} H={fireH} peakW={peakW * 1.3} hScale={0.7} seed={7} id="t2cFireMid"
+          stops={isHot ? ['#FF3D00', '#FF9100', '#FFD600'] : ['#FF6D00', '#FFA000', '#FFE082']} />
+      </Animated.View>
+      <Animated.View style={layer(flickC, false) as any}>
+        <FireLayer bandW={bandW} H={fireH} peakW={peakW * 1.7} hScale={0.4} seed={13} id="t2cFireCore"
+          stops={['#FFD54F', '#FFF176', '#FFFDE7']} />
+      </Animated.View>
+    </>
+  );
 
   const barInner = (
     <View style={[styles.barContainer, compact && styles.barContainerCompact]} onLayout={onBarLayout}>
@@ -206,8 +229,8 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
       >
         <Animated.View style={IS_WEB ? webBarOuterStyle : nativeBarOuterStyle}>{barInner}</Animated.View>
         {clampedProgress > 0 && barW > 0 && !still && (
-          <View pointerEvents="none" style={[styles.flameLayer, { height: baseH * 1.8 }]}>
-            <Animated.View style={[styles.flameRow, { width: fillWidth }]}>{flames}</Animated.View>
+          <View pointerEvents="none" style={[styles.flameLayer, { height: fireH, width: bandW }]}>
+            {flames}
           </View>
         )}
       </View>
@@ -241,8 +264,7 @@ const styles = StyleSheet.create({
     shadowColor: '#FF6A00',
     shadowOffset: { width: 0, height: 0 },
   },
-  flameLayer: { position: 'absolute', left: 0, right: 0, bottom: '55%', zIndex: 3 },
-  flameRow: { height: '100%', position: 'relative' },
+  flameLayer: { position: 'absolute', left: 0, bottom: '50%', zIndex: 3 },
   barOuter: { borderRadius: 14, overflow: 'hidden' },
   barContainer: { height: 24, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   track: { flex: 1, borderRadius: 12 },

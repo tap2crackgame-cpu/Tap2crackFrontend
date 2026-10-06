@@ -100,7 +100,7 @@ export default function Tap2CrackGame() {
   const consecutiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapCountRef = useRef(0);
   const consecutiveRef = useRef(0);
-  const tapUiRafRef = useRef<number | null>(null);
+  const tapUiRafRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFlashAtRef = useRef(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const noop = useCallback(() => {}, []);
@@ -164,7 +164,7 @@ export default function Tap2CrackGame() {
   useEffect(() => {
     return () => {
       if (tapUiRafRef.current !== null) {
-        cancelAnimationFrame(tapUiRafRef.current);
+        clearTimeout(tapUiRafRef.current);
       }
     };
   }, []);
@@ -194,9 +194,11 @@ export default function Tap2CrackGame() {
     setConsecutiveTaps(consecutiveRef.current);
   }, []);
 
+  // Tap counters drive the puns/chickens only, so refresh them ~14 times a second instead of every frame.
+  // Fewer full-screen re-renders keeps the 2x/3x and pun animations smooth while tapping fast.
   const scheduleTapUi = useCallback(() => {
     if (tapUiRafRef.current !== null) return;
-    tapUiRafRef.current = requestAnimationFrame(flushTapUi);
+    tapUiRafRef.current = setTimeout(flushTapUi, 70);
   }, [flushTapUi]);
 
   const isWideWeb = Platform.OS === "web" && width >= 900;
@@ -485,9 +487,7 @@ export default function Tap2CrackGame() {
           ]} 
           pointerEvents="none"
         />
-        {(activePowerUp || currentEgg.isHappyHour) && (
-          <PowerUpBackground activePowerUp={activePowerUp} isHappyHour={currentEgg.isHappyHour} />
-        )}
+        <PowerUpBackground activePowerUp={activePowerUp} isHappyHour={!!currentEgg.isHappyHour} />
 
         {showDesktopRails ? (
           <View style={[styles.desktopRailLeft, { top: Math.min(height * 0.26, height * 0.5 - 140) }]} pointerEvents="box-none">
@@ -725,7 +725,7 @@ export default function Tap2CrackGame() {
                   tapMultiplier={activePowerUp?.multiplier || (currentEgg.isHappyHour ? 2 : 1)}
                   crackProgress={progressPct}
                   centerX={stageWidth / 2}
-                  centerY={Math.round((stageHeight - eggH) / 2 + eggH * 0.3)}
+                  centerY={Math.round((stageHeight - eggH) / 2 - 10 + eggH * 0.45)}
                   compact={isPhone}
                 />
               </View>

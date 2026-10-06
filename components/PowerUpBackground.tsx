@@ -1,270 +1,171 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import React, { memo, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Easing, useWindowDimensions } from 'react-native';
 
 interface PowerUpBackgroundProps {
   activePowerUp: { type: string; multiplier: number } | null;
   isHappyHour?: boolean;
 }
 
-export default function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgroundProps) {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const floatAnim1 = useRef(new Animated.Value(0)).current;
-  const floatAnim2 = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0.3)).current;
-  const bounceAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+type Mode = '2x' | '3x';
 
-  const isActive = activePowerUp?.type === '2x' || activePowerUp?.type === '3x' || isHappyHour;
-  const is3x = activePowerUp?.type === '3x';
+const EASE = Easing.inOut(Easing.sin);
+
+/** 0 -> 1 -> 0 forever, smooth sine easing. */
+function useWave(ms: number, running: boolean) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!running) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: ms, easing: EASE, useNativeDriver: true }),
+        Animated.timing(v, { toValue: 0, duration: ms, easing: EASE, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [ms, running, v]);
+  return v;
+}
+
+/** An emoji with room around the glyph so rotation / scaling never cuts it off. */
+function Emoji({ char, size }: { char: string; size: number }) {
+  return (
+    <Text
+      style={{
+        fontSize: size,
+        lineHeight: Math.round(size * 1.3),
+        width: Math.round(size * 1.4),
+        textAlign: 'center',
+        includeFontPadding: false,
+      }}
+    >
+      {char}
+    </Text>
+  );
+}
+
+function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgroundProps) {
+  const { width, height } = useWindowDimensions();
+  const isPhone = width < 420;
+
+  const wanted: Mode | null =
+    activePowerUp?.type === '3x' ? '3x' : activePowerUp?.type === '2x' || isHappyHour ? '2x' : null;
+
+  // Keep showing the last mode while fading out, so it never just pops away.
+  const [mode, setMode] = useState<Mode | null>(wanted);
+  const fade = useRef(new Animated.Value(wanted ? 1 : 0)).current;
 
   useEffect(() => {
-    if (!isActive) {
-      pulseAnim.setValue(1);
-      floatAnim1.setValue(0);
-      floatAnim2.setValue(0);
-      glowAnim.setValue(0.3);
-      bounceAnim.setValue(0);
-      rotateAnim.setValue(0);
-      return;
+    if (wanted) {
+      setMode(wanted);
+      Animated.timing(fade, { toValue: 1, duration: 350, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    } else {
+      Animated.timing(fade, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(
+        ({ finished }) => finished && setMode(null)
+      );
     }
+  }, [wanted, fade]);
 
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.08,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ])
-    );
+  const running = mode !== null;
+  const float1 = useWave(2000, running);
+  const float2 = useWave(1800, running);
+  const pulse = useWave(1200, running);
+  const glow = useWave(1500, running);
+  const sway = useWave(3000, running);
 
-    floatAnim1.setValue(-12);
-    const floatLoop1 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim1, {
-          toValue: 12,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim1, {
-          toValue: -12,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
+  if (!mode) return null;
+  const is3x = mode === '3x';
 
-    floatAnim2.setValue(10);
-    const floatLoop2 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim2, {
-          toValue: -10,
-          duration: 1800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim2, {
-          toValue: 10,
-          duration: 1800,
-          useNativeDriver: true,
-        }),
-      ])
-    );
+  // Sizes and positions follow the live window size (not a value captured once at load),
+  // and keep everything inside the screen and away from the egg in the middle.
+  const charSize = isPhone ? 40 : 52;
+  const decorSize = isPhone ? 22 : 28;
+  const sparkSize = isPhone ? 18 : 22;
+  const edge = isPhone ? 6 : 16;
+  const topBand = Math.max(130, height * 0.24); // below the header + nav
 
-    glowAnim.setValue(0.25);
-    const glowLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 0.6,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0.25,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ])
-    );
+  const y1 = float1.interpolate({ inputRange: [0, 1], outputRange: [-10, 10] });
+  const y2 = float2.interpolate({ inputRange: [0, 1], outputRange: [8, -8] });
+  const x1 = float1.interpolate({ inputRange: [0, 1], outputRange: [-6, 6] });
+  const x2 = float2.interpolate({ inputRange: [0, 1], outputRange: [6, -6] });
+  const rot = sway.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '8deg'] });
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.6] });
 
-    bounceAnim.setValue(-6);
-    const bounceLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: 6,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceAnim, {
-          toValue: -6,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    rotateAnim.setValue(0);
-    const rotateLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    pulseLoop.start();
-    floatLoop1.start();
-    floatLoop2.start();
-    glowLoop.start();
-    bounceLoop.start();
-    rotateLoop.start();
-
-    return () => {
-      pulseLoop.stop();
-      floatLoop1.stop();
-      floatLoop2.stop();
-      glowLoop.stop();
-      bounceLoop.stop();
-      rotateLoop.stop();
-    };
-  }, [isActive, is3x, pulseAnim, floatAnim1, floatAnim2, glowAnim, bounceAnim, rotateAnim]);
-
-  if (!isActive) return null;
-
-  const smallRotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-8deg', '8deg'],
-  });
-
-  if (is3x) {
-    return (
-      <View style={styles.container} pointerEvents="none">
-        <Animated.View style={[styles.glowOrb3x, { opacity: glowAnim }]} />
-        <Animated.View style={[styles.glowOrb3xSecond, { opacity: glowAnim }]} />
-
-        <Animated.View style={[
-          styles.topLeftCharacter,
-          { transform: [{ translateY: floatAnim1 }, { rotate: smallRotate }] },
-        ]}>
-          <Text style={styles.characterEmoji}>🍳</Text>
-          <View style={styles.speechBubble3x}>
-            <Text style={styles.speechText3x}>3x!!</Text>
-          </View>
-        </Animated.View>
-
-        <Animated.View style={[
-          styles.topRightBadge3x,
-          { transform: [{ scale: pulseAnim }, { translateY: bounceAnim }] },
-        ]}>
-          <Text style={styles.bigMultiplierText3x}>3×</Text>
-          <Text style={styles.bigMultiplierSubtext3x}>TAP</Text>
-        </Animated.View>
-
-        <Animated.View style={[
-          styles.bottomLeftCharacter,
-          { transform: [{ translateY: floatAnim2 }, { rotate: smallRotate }] },
-        ]}>
-          <Text style={styles.characterEmoji}>🐔</Text>
-        </Animated.View>
-
-        <Animated.View style={[
-          styles.bottomRightDecor,
-          { transform: [{ translateY: floatAnim1 }] },
-        ]}>
-          <Text style={styles.decorEmoji}>⚡</Text>
-        </Animated.View>
-
-        <Animated.View style={[
-          styles.midLeftDecor,
-          { transform: [{ translateX: floatAnim2 }] },
-        ]}>
-          <Text style={styles.sparkEmoji}>💥</Text>
-        </Animated.View>
-
-        <Animated.View style={[
-          styles.midRightDecor,
-          { transform: [{ translateX: floatAnim1 }] },
-        ]}>
-          <Text style={styles.sparkEmoji}>🔥</Text>
-        </Animated.View>
-
-        <Animated.View style={[styles.bannerStrip3x, { opacity: glowAnim }]}>
-          <Text style={styles.bannerText3x}>⚡ TRIPLE TAP ACTIVE ⚡</Text>
-        </Animated.View>
-      </View>
-    );
-  }
+  const t = is3x
+    ? {
+        char1: '🍳', char2: '🐔', decor: '⚡', sparkL: '💥', sparkR: '🔥',
+        bubble: '3x!!', bubbleBg: '#9B59B6', big: '3×', color: '#D4A5FF',
+        badgeBg: 'rgba(155, 89, 182, 0.3)', badgeBorder: 'rgba(155, 89, 182, 0.6)',
+        orbA: 'rgba(155, 89, 182, 0.18)', orbB: 'rgba(255, 107, 107, 0.14)',
+        banner: '⚡ TRIPLE TAP ACTIVE ⚡', bannerBg: 'rgba(155, 89, 182, 0.22)',
+      }
+    : {
+        char1: '🐣', char2: '🐥', decor: '✨', sparkL: '⭐', sparkR: '✨',
+        bubble: '2x!', bubbleBg: '#4ECDC4', big: '2×', color: '#4ECDC4',
+        badgeBg: 'rgba(78, 205, 196, 0.25)', badgeBorder: 'rgba(78, 205, 196, 0.5)',
+        orbA: 'rgba(78, 205, 196, 0.15)', orbB: 'rgba(255, 215, 0, 0.12)',
+        banner: '🐣 DOUBLE TAP ACTIVE 🐣', bannerBg: 'rgba(78, 205, 196, 0.18)',
+      };
 
   return (
-    <View style={styles.container} pointerEvents="none">
-      <Animated.View style={[styles.glowOrb2x, { opacity: glowAnim }]} />
-      <Animated.View style={[styles.glowOrb2xSecond, { opacity: glowAnim }]} />
+    <Animated.View style={[styles.container, { opacity: fade }]} pointerEvents="none">
+      {/* soft glows */}
+      <Animated.View style={[styles.orb, { top: height * 0.1, left: -50, width: 170, height: 170, borderRadius: 85, backgroundColor: t.orbA, opacity: glowOpacity }]} />
+      <Animated.View style={[styles.orb, { bottom: height * 0.14, right: -40, width: 150, height: 150, borderRadius: 75, backgroundColor: t.orbB, opacity: glowOpacity }]} />
 
-      <Animated.View style={[
-        styles.topLeftCharacter,
-        { transform: [{ translateY: floatAnim1 }, { rotate: smallRotate }] },
-      ]}>
-        <Text style={styles.characterEmoji}>🐣</Text>
-        <View style={styles.speechBubble}>
-          <Text style={styles.speechText}>2x!</Text>
+      {/* character + speech bubble (left) */}
+      <Animated.View style={[styles.abs, { top: topBand, left: edge, transform: [{ translateY: y1 }, { rotate: rot }] }]}>
+        <Emoji char={t.char1} size={charSize} />
+        <View style={[styles.bubble, { backgroundColor: t.bubbleBg }]}>
+          <Text style={[styles.bubbleText, isPhone && styles.bubbleTextSm]}>{t.bubble}</Text>
         </View>
       </Animated.View>
 
-      <Animated.View style={[
-        styles.topRightBadge,
-        { transform: [{ scale: pulseAnim }, { translateY: bounceAnim }] },
-      ]}>
-        <Text style={styles.bigMultiplierText}>2×</Text>
-        <Text style={styles.bigMultiplierSubtext}>TAP</Text>
+      {/* big multiplier badge (right) */}
+      <Animated.View
+        style={[
+          styles.abs,
+          styles.badge,
+          isPhone && styles.badgeSm,
+          { top: topBand, right: edge, backgroundColor: t.badgeBg, borderColor: t.badgeBorder, transform: [{ translateY: y2 }, { scale }] },
+        ]}
+      >
+        <Text style={[styles.bigText, isPhone && styles.bigTextSm, { color: t.color }]}>{t.big}</Text>
+        <Text style={[styles.bigSub, isPhone && styles.bigSubSm, { color: t.color }]}>TAP</Text>
       </Animated.View>
 
-      <Animated.View style={[
-        styles.bottomRightCharacter,
-        { transform: [{ translateY: floatAnim2 }, { rotate: smallRotate }] },
-      ]}>
-        <Text style={styles.characterEmoji}>🐥</Text>
+      {/* side sparks beside the egg */}
+      <Animated.View style={[styles.abs, { top: height * 0.5, left: edge, transform: [{ translateX: x2 }] }]}>
+        <Emoji char={t.sparkL} size={sparkSize} />
+      </Animated.View>
+      <Animated.View style={[styles.abs, { top: height * 0.47, right: edge, transform: [{ translateX: x1 }] }]}>
+        <Emoji char={t.sparkR} size={sparkSize} />
       </Animated.View>
 
-      <Animated.View style={[
-        styles.bottomLeftDecor,
-        { transform: [{ translateY: floatAnim1 }] },
-      ]}>
-        <Text style={styles.decorEmoji}>✨</Text>
+      {/* lower character + decor */}
+      <Animated.View style={[styles.abs, { bottom: height * 0.2, right: edge + 6, transform: [{ translateY: y2 }, { rotate: rot }] }]}>
+        <Emoji char={t.char2} size={charSize} />
+      </Animated.View>
+      <Animated.View style={[styles.abs, { bottom: height * 0.28, left: edge + 10, transform: [{ translateY: y1 }] }]}>
+        <Emoji char={t.decor} size={decorSize} />
       </Animated.View>
 
-      <Animated.View style={[
-        styles.midLeftDecor,
-        { transform: [{ translateX: floatAnim2 }] },
-      ]}>
-        <Text style={styles.sparkEmoji}>⭐</Text>
+      {/* banner pinned to the bottom so it never covers the header */}
+      <Animated.View style={[styles.banner, { backgroundColor: t.bannerBg, opacity: glowOpacity.interpolate({ inputRange: [0.25, 0.6], outputRange: [0.75, 1] }) }]}>
+        <Text style={[styles.bannerText, isPhone && styles.bannerTextSm, { color: t.color }]} numberOfLines={1}>
+          {t.banner}
+        </Text>
       </Animated.View>
-
-      <Animated.View style={[
-        styles.midRightDecor,
-        { transform: [{ translateX: floatAnim1 }] },
-      ]}>
-        <Text style={styles.sparkEmoji}>✨</Text>
-      </Animated.View>
-
-      <Animated.View style={[styles.bannerStrip, { opacity: glowAnim }]}>
-        <Text style={styles.bannerText}>🐣 DOUBLE TAP ACTIVE 🐣</Text>
-      </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
+
+/** Only re-render when the power-up actually changes, not on every tap. */
+export default memo(
+  PowerUpBackground,
+  (a, b) => a.activePowerUp?.type === b.activePowerUp?.type && !!a.isHappyHour === !!b.isHappyHour
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -272,60 +173,15 @@ const styles = StyleSheet.create({
     zIndex: 5,
     overflow: 'hidden',
   },
+  orb: { position: 'absolute' },
+  abs: { position: 'absolute', alignItems: 'center', padding: 4 },
 
-  glowOrb2x: {
+  bubble: {
     position: 'absolute',
-    top: height * 0.1,
-    left: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(78, 205, 196, 0.15)',
-  },
-  glowOrb2xSecond: {
-    position: 'absolute',
-    bottom: height * 0.15,
-    right: -30,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 215, 0, 0.12)',
-  },
-  glowOrb3x: {
-    position: 'absolute',
-    top: height * 0.08,
-    right: -30,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(155, 89, 182, 0.18)',
-  },
-  glowOrb3xSecond: {
-    position: 'absolute',
-    bottom: height * 0.12,
-    left: -40,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255, 107, 107, 0.14)',
-  },
-
-  topLeftCharacter: {
-    position: 'absolute',
-    top: height * 0.12,
-    left: 16,
-    alignItems: 'center',
-  },
-  characterEmoji: {
-    fontSize: 52,
-  },
-  speechBubble: {
-    position: 'absolute',
-    top: -20,
-    right: -38,
-    backgroundColor: '#4ECDC4',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    top: -14,
+    left: '70%',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 14,
     borderBottomLeftRadius: 4,
     shadowColor: '#000',
@@ -334,157 +190,37 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  speechText: {
-    fontSize: 16,
-    fontWeight: '900' as const,
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
-  speechBubble3x: {
-    position: 'absolute',
-    top: -20,
-    right: -42,
-    backgroundColor: '#9B59B6',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderBottomLeftRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  speechText3x: {
-    fontSize: 16,
-    fontWeight: '900' as const,
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
+  bubbleText: { fontSize: 15, lineHeight: 19, fontWeight: '900' as const, color: '#FFFFFF', letterSpacing: 1 },
+  bubbleTextSm: { fontSize: 12, lineHeight: 16 },
 
-  topRightBadge: {
-    position: 'absolute',
-    top: height * 0.1,
-    right: 14,
-    alignItems: 'center',
-    backgroundColor: 'rgba(78, 205, 196, 0.25)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  badge: {
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 2,
-    borderColor: 'rgba(78, 205, 196, 0.5)',
   },
-  bigMultiplierText: {
-    fontSize: 38,
+  badgeSm: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14 },
+  bigText: {
+    fontSize: 36,
+    lineHeight: 44,
     fontWeight: '900' as const,
-    color: '#4ECDC4',
-    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
     letterSpacing: 2,
   },
-  bigMultiplierSubtext: {
-    fontSize: 14,
-    fontWeight: '800' as const,
-    color: '#4ECDC4',
-    letterSpacing: 4,
-    marginTop: -4,
-  },
-  topRightBadge3x: {
-    position: 'absolute',
-    top: height * 0.1,
-    right: 14,
-    alignItems: 'center',
-    backgroundColor: 'rgba(155, 89, 182, 0.3)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(155, 89, 182, 0.6)',
-  },
-  bigMultiplierText3x: {
-    fontSize: 38,
-    fontWeight: '900' as const,
-    color: '#D4A5FF',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-    letterSpacing: 2,
-  },
-  bigMultiplierSubtext3x: {
-    fontSize: 14,
-    fontWeight: '800' as const,
-    color: '#D4A5FF',
-    letterSpacing: 4,
-    marginTop: -4,
-  },
+  bigTextSm: { fontSize: 26, lineHeight: 32 },
+  bigSub: { fontSize: 13, lineHeight: 16, fontWeight: '800' as const, letterSpacing: 4 },
+  bigSubSm: { fontSize: 10, lineHeight: 13, letterSpacing: 3 },
 
-  bottomRightCharacter: {
+  banner: {
     position: 'absolute',
-    bottom: height * 0.22,
-    right: 20,
-  },
-  bottomLeftCharacter: {
-    position: 'absolute',
-    bottom: height * 0.25,
-    left: 20,
-  },
-  bottomLeftDecor: {
-    position: 'absolute',
-    bottom: height * 0.32,
-    left: 30,
-  },
-  bottomRightDecor: {
-    position: 'absolute',
-    bottom: height * 0.30,
-    right: 24,
-  },
-  decorEmoji: {
-    fontSize: 28,
-  },
-
-  midLeftDecor: {
-    position: 'absolute',
-    top: height * 0.40,
-    left: 10,
-  },
-  midRightDecor: {
-    position: 'absolute',
-    top: height * 0.38,
-    right: 10,
-  },
-  sparkEmoji: {
-    fontSize: 22,
-  },
-
-  bannerStrip: {
-    position: 'absolute',
-    top: height * 0.04,
+    bottom: 0,
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingVertical: 6,
-    backgroundColor: 'rgba(78, 205, 196, 0.15)',
+    paddingVertical: 7,
   },
-  bannerText: {
-    fontSize: 13,
-    fontWeight: '800' as const,
-    color: '#4ECDC4',
-    letterSpacing: 2,
-  },
-  bannerStrip3x: {
-    position: 'absolute',
-    top: height * 0.04,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingVertical: 6,
-    backgroundColor: 'rgba(155, 89, 182, 0.18)',
-  },
-  bannerText3x: {
-    fontSize: 13,
-    fontWeight: '800' as const,
-    color: '#D4A5FF',
-    letterSpacing: 2,
-  },
+  bannerText: { fontSize: 13, lineHeight: 17, fontWeight: '800' as const, letterSpacing: 2 },
+  bannerTextSm: { fontSize: 11, lineHeight: 15, letterSpacing: 1.5 },
 });
