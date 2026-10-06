@@ -21,6 +21,7 @@ import PowerUpBackground, { PowerUpActiveStrip } from "@/components/PowerUpBackg
 import CheerCrowd from "@/components/CheerCrowd";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
 import CluckyNest from "@/components/CluckyNest";
+import { preloadTapSounds, playTapSound, unloadTapSounds } from "@/utils/sounds";
 import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
@@ -159,6 +160,12 @@ export default function Tap2CrackGame() {
   const [testIsLoser, setTestIsLoser] = useState(false);
   const [activeCategory, setActiveCategory] = useState(0);
   const carouselScrollRef = useRef<ScrollView>(null);
+
+  // Load the tap "tick" sounds once when the game opens.
+  useEffect(() => {
+    void preloadTapSounds();
+    return () => unloadTapSounds();
+  }, []);
 
   // Disable zoom on web
   useEffect(() => {
@@ -486,6 +493,7 @@ export default function Tap2CrackGame() {
   const handleEggTap = useCallback((x: number, y: number) => {
     if (currentEgg?.isCooldown) return;
 
+    playTapSound();
     tapCountRef.current += 1;
     consecutiveRef.current += 1;
     const n = tapCountRef.current;
