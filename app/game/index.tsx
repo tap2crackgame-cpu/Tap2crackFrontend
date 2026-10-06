@@ -79,6 +79,10 @@ export default function Tap2CrackGame() {
     isStartingAds,
     adTimerActive,
     adPhase,
+    markAdMediaReady,
+    markAdMediaFailed,
+    setAdMediaBuffering,
+    adMediaBuffering,
     activatingPowerUp,
     currentWinner, 
     activePowerUp, 
@@ -1105,6 +1109,10 @@ export default function Tap2CrackGame() {
           onDismissReward={dismissAdModal}
           timerActive={adTimerActive}
           adPhase={adPhase}
+          buffering={adMediaBuffering}
+          onMediaReady={markAdMediaReady}
+          onMediaError={markAdMediaFailed}
+          onBuffering={setAdMediaBuffering}
         />
         {token && paymentPayload && (
           <PaymentModal

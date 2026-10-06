@@ -25,6 +25,14 @@ interface AdModalProps {
   onDismissReward?: () => void;
   timerActive?: boolean;
   adPhase?: "idle" | "loading" | "playing" | "reward";
+  /** Video stalled mid-ad (countdown is paused). */
+  buffering?: boolean;
+  /** Video actually started playing / image finished loading -> countdown may start. */
+  onMediaReady?: () => void;
+  /** Media failed to load. */
+  onMediaError?: () => void;
+  /** Video is waiting for data (true) or playing again (false). */
+  onBuffering?: (buffering: boolean) => void;
 }
 
 const DESKTOP_BREAKPOINT = 768;
@@ -41,10 +49,16 @@ export default function AdModal({
   onDismissReward,
   timerActive = false,
   adPhase = "playing",
+  buffering = false,
+  onMediaReady,
+  onMediaError,
+  onBuffering,
 }: AdModalProps) {
   const { width } = useWindowDimensions();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [muted, setMuted] = useState(false);
+  // Browser blocked autoplay even when muted: ask for one tap.
+  const [needsTap, setNeedsTap] = useState(false);
 
   const isDesktopLayout = width >= DESKTOP_BREAKPOINT;
   const isVideoAd = currentAd?.mediaType === "video";
@@ -58,15 +72,45 @@ export default function AdModal({
     return Math.min(100, (elapsed / duration) * 100);
   }, [duration, timeLeft]);
 
+  // Start the video for each ad. Browsers often block autoplay WITH sound; if so, retry muted
+  // (the player can unmute with the speaker button), and if even that is blocked, show "Tap to play".
+  // The countdown doesn't start until the video fires "playing" (see onPlaying below).
   useEffect(() => {
     if (!visible || Platform.OS !== "web") return;
     if (currentAd?.mediaType !== "video") return;
     const el = videoRef.current;
     if (!el) return;
+    setNeedsTap(false);
     el.currentTime = 0;
     el.muted = muted;
-    el.play().catch(() => {});
-  }, [visible, currentAd?.id, step, muted]);
+    el.play().catch(() => {
+      el.muted = true;
+      setMuted(true);
+      el.play().catch(() => setNeedsTap(true));
+    });
+    // muted is applied directly in handleToggleMute; don't restart the video when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, currentAd?.id, step]);
+
+  // Image ads: if this image already finished loading (e.g. ad 2 reuses ad 1's image),
+  // onLoad won't fire again, so report it ready straight away.
+  const loadedImageUrlRef = useRef<string | null>(null);
+  const handleImageLoad = () => {
+    loadedImageUrlRef.current = currentAd?.mediaUrl ?? null;
+    onMediaReady?.();
+  };
+  useEffect(() => {
+    if (!visible || !currentAd || adPhase !== "loading") return;
+    const nativeVideoFallback = currentAd.mediaType === "video" && Platform.OS !== "web";
+    if (currentAd.mediaType === "video" && !nativeVideoFallback) return;
+    if (loadedImageUrlRef.current === currentAd.mediaUrl) onMediaReady?.();
+  }, [visible, currentAd, adPhase, step, onMediaReady]);
+
+  const handleTapToPlay = () => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.play().then(() => setNeedsTap(false)).catch(() => {});
+  };
 
   useEffect(() => {
     if (visible) setMuted(false);
@@ -179,7 +223,7 @@ export default function AdModal({
                   <Text style={styles.rewardFootnote}>Tap close to return to the game</Text>
                 )}
               </View>
-            ) : !currentAd || (isLoading && !isVideoAd) ? (
+            ) : !currentAd ? (
               <View style={[styles.loadingBox, isDesktopLayout && styles.loadingBoxDesktop]}>
                 <ActivityIndicator color="#FFD700" size="large" />
                 <Text style={styles.loadingText}>
@@ -214,11 +258,26 @@ export default function AdModal({
                     isDesktopLayout && isVideoAd && styles.mediaBoxDesktopVideo,
                   ]}
                 >
-                  {isLoading && isVideoAd && (
-                    <View style={styles.mediaLoading}>
+                  {/* Countdown hasn't started yet: the ad is still loading */}
+                  {isLoading && !needsTap && (
+                    <View style={styles.mediaLoading} pointerEvents="none">
                       <ActivityIndicator color="#FFD700" />
-                      <Text style={styles.loadingText}>Preparing ad {step}…</Text>
+                      <Text style={styles.loadingText}>Loading ad {step}…</Text>
+                      <Text style={styles.loadingHint}>Your timer starts when the ad plays</Text>
                     </View>
+                  )}
+                  {buffering && !isLoading && (
+                    <View style={styles.mediaLoading} pointerEvents="none">
+                      <ActivityIndicator color="#FFD700" />
+                      <Text style={styles.loadingText}>Buffering… timer paused</Text>
+                    </View>
+                  )}
+                  {needsTap && (
+                    <TouchableOpacity style={styles.mediaLoading} onPress={handleTapToPlay} activeOpacity={0.85}>
+                      <View style={styles.tapToPlayBtn}>
+                        <Text style={styles.tapToPlayText}>▶ Tap to play ad</Text>
+                      </View>
+                    </TouchableOpacity>
                   )}
                   {currentAd.mediaType === "video" ? (
                     Platform.OS === "web" ? (
@@ -236,19 +295,31 @@ export default function AdModal({
                         muted={muted}
                         playsInline
                         controls={false}
+                        preload="auto"
+                        onPlaying={() => {
+                          setNeedsTap(false);
+                          onMediaReady?.();
+                          onBuffering?.(false);
+                        }}
+                        onWaiting={() => onBuffering?.(true)}
+                        onError={() => onMediaError?.()}
                       />
                     ) : (
                       <Image
                         source={{ uri: currentAd.mediaUrl }}
                         style={styles.media}
                         contentFit={isDesktopLayout ? "contain" : "cover"}
+                        onLoad={handleImageLoad}
+                        onError={() => onMediaError?.()}
                       />
                     )
                   ) : (
                     <Image
                       source={{ uri: currentAd.mediaUrl }}
-                      style={styles.media}
+                      style={[styles.media, isLoading && { opacity: 0 }]}
                       contentFit="contain"
+                      onLoad={handleImageLoad}
+                      onError={() => onMediaError?.()}
                     />
                   )}
                 </View>
@@ -531,6 +602,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loadingText: { color: "rgba(255,255,255,0.6)", fontSize: 14 },
+  loadingHint: { color: "rgba(255,255,255,0.45)", fontSize: 12 },
+  tapToPlayBtn: {
+    backgroundColor: "#FFD700",
+    paddingVertical: 14,
+    paddingHorizontal: 26,
+    borderRadius: 28,
+  },
+  tapToPlayText: { color: "#1A1A2E", fontSize: 16, fontWeight: "800" as const },
   rewardBox: {
     flex: 1,
     alignItems: "center",

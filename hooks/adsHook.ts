@@ -9,6 +9,8 @@ type AdPhase = "idle" | "loading" | "playing" | "reward";
 
 const DEFAULT_DURATION = 15;
 const MAX_AD_DURATION = 30;
+/** If the ad media still hasn't started after this long, give up instead of running the timer on a blank screen. */
+const MEDIA_LOAD_TIMEOUT_MS = 25000;
 
 const AD_REJECT_MESSAGES: Record<string, string> = {
   ROUND_ENDED: "This round has ended.",
@@ -39,6 +41,7 @@ export function useAds() {
   const [totalSteps, setTotalSteps] = useState(2);
   const [stepDuration, setStepDuration] = useState(DEFAULT_DURATION);
   const [isStartingAds, setIsStartingAds] = useState(false);
+  const [mediaBuffering, setMediaBuffering] = useState(false);
 
   const sessionRef = useRef<string | null>(null);
   const stepRef = useRef<AdStep>(1);
@@ -49,6 +52,11 @@ export function useAds() {
   const waitingForAdNextRef = useRef(false);
   const phaseRef = useRef<AdPhase>("idle");
   phaseRef.current = phase;
+  // The countdown waits for the ad media: playStep() parks the step here until the
+  // AdModal reports the video is actually playing (or the image has loaded).
+  const pendingStepRef = useRef<{ step: AdStep; secs: number } | null>(null);
+  const mediaTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pausedRef = useRef(false); // true while the video is buffering mid-ad
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -57,8 +65,19 @@ export function useAds() {
     }
   }, []);
 
+  const clearMediaTimeout = useCallback(() => {
+    if (mediaTimeoutRef.current) {
+      clearTimeout(mediaTimeoutRef.current);
+      mediaTimeoutRef.current = null;
+    }
+  }, []);
+
   const resetSession = useCallback(() => {
     clearTimer();
+    clearMediaTimeout();
+    pendingStepRef.current = null;
+    pausedRef.current = false;
+    setMediaBuffering(false);
     sessionRef.current = null;
     nextAdRef.current = null;
     waitingForAdNextRef.current = false;
@@ -70,7 +89,7 @@ export function useAds() {
     setCurrentAd(null);
     setStepDuration(DEFAULT_DURATION);
     setIsStartingAds(false);
-  }, [clearTimer]);
+  }, [clearTimer, clearMediaTimeout]);
 
   const dismissAdModal = useCallback(() => {
     resetSession();
@@ -106,8 +125,12 @@ export function useAds() {
       setStepDuration(secs);
       setTimeLeft(secs);
       setPhase("playing");
+      pausedRef.current = false;
+      setMediaBuffering(false);
 
       timerRef.current = setInterval(() => {
+        // Video is buffering: hold the countdown until it plays again.
+        if (pausedRef.current) return;
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearTimer();
@@ -137,12 +160,55 @@ export function useAds() {
         return;
       }
       const secs = resolveAdDuration(ad, duration);
+      clearTimer();
+      clearMediaTimeout();
       setCurrentAd(ad);
+      stepRef.current = adStep;
+      durationRef.current = secs;
+      setStep(adStep);
+      setStepDuration(secs);
+      setTimeLeft(secs);
+      // Show "Loading ad…" and wait for the AdModal to say the media is really on screen.
+      pendingStepRef.current = { step: adStep, secs };
+      setPhase("loading");
       void preloadPromoAdMedia(ad);
-      startStepTimer(adStep, secs);
+      mediaTimeoutRef.current = setTimeout(() => {
+        mediaTimeoutRef.current = null;
+        if (!pendingStepRef.current) return;
+        resetSession();
+        showAlertAsToast("Ad unavailable", "The ad couldn't load. Please check your connection and try again.");
+      }, MEDIA_LOAD_TIMEOUT_MS);
     },
-    [startStepTimer]
+    [clearTimer, clearMediaTimeout, resetSession]
   );
+
+  /** AdModal calls this when the video starts playing (or the image has loaded). Starts the countdown. */
+  const markAdMediaReady = useCallback(() => {
+    const pending = pendingStepRef.current;
+    if (pending) {
+      pendingStepRef.current = null;
+      clearMediaTimeout();
+      startStepTimer(pending.step, pending.secs);
+      return;
+    }
+    // already counting: this is the video recovering from buffering
+    pausedRef.current = false;
+    setMediaBuffering(false);
+  }, [clearMediaTimeout, startStepTimer]);
+
+  /** Video is stalled mid-ad: pause the countdown (and show "Buffering…"). */
+  const setAdMediaBuffering = useCallback((buffering: boolean) => {
+    if (phaseRef.current !== "playing") return;
+    pausedRef.current = buffering;
+    setMediaBuffering(buffering);
+  }, []);
+
+  /** The video/image failed to load: don't run a timer on a broken ad. */
+  const markAdMediaFailed = useCallback(() => {
+    if (!pendingStepRef.current && phaseRef.current !== "playing") return;
+    resetSession();
+    showAlertAsToast("Ad unavailable", "The ad couldn't load. Please try again.");
+  }, [resetSession]);
 
   const handleSessionStart = useCallback(
     (data: {
@@ -272,9 +338,10 @@ export function useAds() {
       socket.off("ad_rejected", onRejected);
       socket.off("ad_already_started", onStarted);
       clearTimer();
+      clearMediaTimeout();
       clearStartLoading();
     };
-  }, [socket, handleSessionStart, resetSession, clearTimer, clearStartLoading, dismissAdModal]);
+  }, [socket, handleSessionStart, resetSession, clearTimer, clearMediaTimeout, clearStartLoading, dismissAdModal]);
 
   const isWatching = phase === "loading" || phase === "playing" || phase === "reward";
   const adTimerActive = phase === "playing" && timeLeft > 0;
@@ -294,7 +361,10 @@ export function useAds() {
     rewardGrantedUI,
     dismissAdModal,
     resetSession,
-    markAdMediaReady: () => {},
+    markAdMediaReady,
+    markAdMediaFailed,
+    setAdMediaBuffering,
+    adMediaBuffering: mediaBuffering,
     adTimerActive,
     adPhase: phase,
   };

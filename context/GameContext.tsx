@@ -96,6 +96,10 @@ const [GameContextInternal, useGameInternal] = createContextHook(() => {
     isStartingAds,
     adTimerActive,
     adPhase,
+    markAdMediaReady,
+    markAdMediaFailed,
+    setAdMediaBuffering,
+    adMediaBuffering,
   } = useAds();
   const socketRef = useRef(socket);
 
@@ -654,6 +658,10 @@ const handleEggCracked = useCallback((data: {
     isStartingAds,
     adTimerActive,
     adPhase,
+    markAdMediaReady,
+    markAdMediaFailed,
+    setAdMediaBuffering,
+    adMediaBuffering,
     activatingPowerUp,
     isPaymentLoading,
     powerUpUsedThisRound,
@@ -684,6 +692,10 @@ const handleEggCracked = useCallback((data: {
     isStartingAds,
     adTimerActive,
     adPhase,
+    markAdMediaReady,
+    markAdMediaFailed,
+    setAdMediaBuffering,
+    adMediaBuffering,
     adStep,
     adTimeLeft,
     adDuration,
