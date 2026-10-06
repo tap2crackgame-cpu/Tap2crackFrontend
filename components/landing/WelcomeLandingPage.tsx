@@ -91,7 +91,7 @@ function TopNav({ isWide, isMobile, pagePad, contentMax, onPlay, playLoading, on
     <View style={s.navOuter}>
       <View style={[s.navInner, { maxWidth: contentMax, paddingHorizontal: pagePad, height: isMobile ? 58 : 66 }]}>
         <View style={s.navBrand} accessibilityRole="header">
-          <EggArt type="golden" size={isMobile ? 24 : 28} label="Tap2Crack logo" />
+          <EggArt type="normal" size={isMobile ? 24 : 28} label="Tap2Crack logo" />
           <T style={[s.navLogo, isMobile && { fontSize: 20 }]}>Tap2Crack</T>
         </View>
 
@@ -194,7 +194,7 @@ export default function WelcomeLandingPage({ onGooglePress, onGuestPress, google
           </View>
           <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
             <Animated.View style={{ transform: [{ translateY: hop }] }}><Clucky size={isMobile ? 170 : 230} /></Animated.View>
-            <View style={{ marginLeft: -20, marginBottom: 8 }}><EggArt type="golden" size={isMobile ? 66 : 90} label="A golden egg" /></View>
+            <View style={{ marginLeft: -20, marginBottom: 8 }}><EggArt type="normal" size={isMobile ? 66 : 90} label="A Tap2Crack egg" /></View>
           </View>
         </View>
 

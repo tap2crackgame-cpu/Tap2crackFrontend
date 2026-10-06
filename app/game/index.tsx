@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView, StatusBar, Platform, Animated, useWindowDimensions } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, SafeAreaView, StatusBar, Platform, Animated, Easing, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, Users as UsersIcon, User, Crown, TestTube, Smartphone, Ticket, Banknote, Gift, Flame, Zap } from "lucide-react-native";
@@ -267,6 +267,57 @@ export default function Tap2CrackGame() {
       useNativeDriver: true,
     }).start();
   }, [progressPct, mobileBubbleVisible, mobileBubbleScale]);
+  // ---- Egg burst moment ----
+  // When the egg cracks, play the burst first (flash + shake + shards), THEN show the win/lose modal
+  // and the Round Over screen.
+  const BURST_MS = 1100;
+  const roundEnded =
+    !!currentEgg &&
+    (progressPct >= 100 || !!currentEgg.isCooldown || showWinModal || showLoseModal);
+  const prevRoundEndedRef = useRef(roundEnded); // starts with current value: no hold if we join mid-cooldown
+  const [burstHold, setBurstHold] = useState(false);
+  const burstFlash = useRef(new Animated.Value(0)).current;
+  const stageShake = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (roundEnded && !prevRoundEndedRef.current) {
+      setBurstHold(true);
+      burstFlash.setValue(0.9);
+      Animated.timing(burstFlash, { toValue: 0, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+      stageShake.setValue(0);
+      Animated.sequence([
+        Animated.timing(stageShake, { toValue: 16, duration: 40, useNativeDriver: true }),
+        Animated.timing(stageShake, { toValue: -14, duration: 50, useNativeDriver: true }),
+        Animated.timing(stageShake, { toValue: 10, duration: 50, useNativeDriver: true }),
+        Animated.timing(stageShake, { toValue: -6, duration: 50, useNativeDriver: true }),
+        Animated.timing(stageShake, { toValue: 3, duration: 50, useNativeDriver: true }),
+        Animated.timing(stageShake, { toValue: 0, duration: 50, useNativeDriver: true }),
+      ]).start();
+      const t = setTimeout(() => setBurstHold(false), BURST_MS);
+      prevRoundEndedRef.current = roundEnded;
+      return () => clearTimeout(t);
+    }
+    if (!roundEnded) setBurstHold(false);
+    prevRoundEndedRef.current = roundEnded;
+  }, [roundEnded, burstFlash, stageShake]);
+
+  // ---- "ABOUT TO CRACK!" banner (85%+) ----
+  const aboutToCrack = !!currentEgg && progressPct >= 85 && progressPct < 100 && !currentEgg.isCooldown;
+  const crackPulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!aboutToCrack) {
+      crackPulse.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(crackPulse, { toValue: 1, duration: 180, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(crackPulse, { toValue: 0, duration: 180, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [aboutToCrack, crackPulse]);
+
   const popupsProgressOk = progressPct >= 50;
    const popupsOnlineOk = onlineUsers > 1;
   const popupsCooldownOk = !currentEgg?.isCooldown;
@@ -611,7 +662,23 @@ export default function Tap2CrackGame() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.gameMainColumn, { maxWidth: contentMax, width: isWideWeb ? contentMax : "100%" }]}>
-          {currentEgg && currentEgg.egg.type === 'normal' && (
+          {aboutToCrack && (
+            <View style={styles.crackBannerWrap} pointerEvents="none">
+              <Animated.Text
+                style={[
+                  styles.crackBanner,
+                  isPhone && styles.crackBannerSm,
+                  { transform: [{ scale: crackPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                ABOUT TO CRACK!
+              </Animated.Text>
+            </View>
+          )}
+
+          {!aboutToCrack && currentEgg && currentEgg.egg.type === 'normal' && (
             <View style={[styles.prizeRow, isShort && styles.prizeRowCompact]}>
               <View style={[styles.prizeIndicatorContainer, isShort && styles.prizeIndicatorCompact]}>
                 <PrizeIndicator 
@@ -623,7 +690,7 @@ export default function Tap2CrackGame() {
             </View>
           )}
 
-          {currentEgg && currentEgg.egg.type !== 'normal' && (
+          {!aboutToCrack && currentEgg && currentEgg.egg.type !== 'normal' && (
             <View style={styles.mysteryBadge}>
               <Text style={styles.prizeTypeIcon}>❓</Text>
               <Text style={styles.prizeTypeText}>Mystery Prize</Text>
@@ -632,7 +699,7 @@ export default function Tap2CrackGame() {
 
           {currentEgg && (
             <>
-              <View style={[styles.eggStage, { width: stageWidth, height: stageHeight }]}>
+              <Animated.View style={[styles.eggStage, { width: stageWidth, height: stageHeight, transform: [{ translateX: stageShake }] }]}>
                 <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown} size={chickenSize} avoidRight={mobileBubbleVisible} />
                 {powerUpPopups.length > 0 && (
                   <View pointerEvents="none" style={styles.powerUpPopupsLayer}>
@@ -728,7 +795,7 @@ export default function Tap2CrackGame() {
                     type={mainEgg.type} 
                     progress={progressPct} 
                     onTap={handleEggTap} 
-                    isCracked={mainEgg.isCracked} 
+                    isCracked={mainEgg.isCracked || !!mainEgg.isCooldown} 
                     isCooldown={mainEgg.isCooldown}
                     isLoser={testMode && testIsLoser}
                     testCrackLevel={testMode ? testCrackLevel : null}
@@ -746,7 +813,7 @@ export default function Tap2CrackGame() {
                   avoidRight={mobileBubbleVisible}
                   compact={isPhone}
                 />
-              </View>
+              </Animated.View>
             </>
           )}
 
@@ -940,7 +1007,10 @@ export default function Tap2CrackGame() {
 
           </View>
         </ScrollView>
-        {currentEgg?.isCooldown && 
+        {/* white flash when the egg bursts */}
+        <Animated.View pointerEvents="none" style={[styles.burstFlash, { opacity: burstFlash }]} />
+
+        {currentEgg?.isCooldown && !burstHold && 
         currentEgg.cooldownEndTime && (
           <CooldownTimer 
             endTime={currentEgg.cooldownEndTime} 
@@ -951,12 +1021,12 @@ export default function Tap2CrackGame() {
           />
         )}
         <WinModal 
-          visible={showWinModal} 
+          visible={showWinModal && !burstHold} 
           winner={currentWinner} 
           onClose={handleCloseWinModal} 
         />
         <LoseModal 
-          visible={loseModalVisible} 
+          visible={loseModalVisible && !burstHold} 
           onJoinNext={handleLoseJoinNext} 
         />
         <AdModal
@@ -1168,6 +1238,30 @@ const styles = StyleSheet.create({
   prizeIndicatorContainer: {
     alignItems: 'center',
     marginBottom: 8,
+  },
+  crackBannerWrap: {
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    paddingHorizontal: 12,
+  },
+  crackBanner: {
+    fontSize: 44,
+    fontWeight: '900' as const,
+    color: '#FF5A4F',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(255, 59, 48, 0.75)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+  },
+  crackBannerSm: {
+    fontSize: 32,
+  },
+  burstFlash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    zIndex: 60,
   },
   prizeRow: {
     alignItems: 'center',

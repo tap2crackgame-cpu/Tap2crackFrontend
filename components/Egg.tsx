@@ -1,5 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Animated, StyleSheet, TouchableWithoutFeedback, Text, Platform } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import {
+  View, Animated, Easing, StyleSheet, TouchableWithoutFeedback, Text, Platform,
+  type GestureResponderEvent,
+} from 'react-native';
 import Svg, { Path, Ellipse, Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { EggType, EGG_CONFIGS } from '@/types/game';
 
@@ -16,6 +19,8 @@ interface EggProps {
   /** Tighter spacing under the egg (short screens). */
   compact?: boolean;
 }
+
+const IS_WEB = Platform.OS === 'web';
 
 const getEggGradient = (type: EggType): [string, string] => {
   switch (type) {
@@ -59,34 +64,27 @@ const CRACK_PATHS = {
     "M 35 130 L 50 145 L 40 165",
     "M 90 25 L 95 50 L 85 70",
   ],
-  broken: [
-    // Main crack lines
-    "M 30 70 L 50 90 L 40 120 L 60 140 L 45 170",
-    "M 150 60 L 130 85 L 145 110 L 125 135 L 140 160",
-    "M 90 30 L 95 60 L 80 85 L 90 110 L 75 140",
-    "M 20 110 L 40 125 L 30 150 L 55 170",
-    "M 160 120 L 140 140 L 155 165",
-    // Extra fragments
-    "M 60 50 L 75 70 L 65 85",
-    "M 120 45 L 110 70 L 125 85",
-  ],
 };
 
-// Fragment paths for shattered egg effect
-const FRAGMENT_PATHS = [
-  { d: "M 30 70 L 50 90 L 40 120 Z", fill: "url(#eggGradient)", opacity: 0.9 },
-  { d: "M 50 90 L 60 140 L 40 120 Z", fill: "url(#eggGradient)", opacity: 0.85 },
-  { d: "M 150 60 L 130 85 L 145 110 Z", fill: "url(#eggGradient)", opacity: 0.9 },
-  { d: "M 130 85 L 125 135 L 145 110 Z", fill: "url(#eggGradient)", opacity: 0.85 },
-  { d: "M 90 30 L 95 60 L 80 85 Z", fill: "url(#eggGradient)", opacity: 0.9 },
-  { d: "M 95 60 L 90 110 L 80 85 Z", fill: "url(#eggGradient)", opacity: 0.85 },
+/** Shell shards for the burst: direction they fly (unit-ish x/y) + shape. */
+const SHARDS: { dx: number; dy: number; d: string; spin: number }[] = [
+  { dx: -1, dy: -0.9, d: 'M5 30 L30 5 L50 25 L35 55 Z', spin: -1 },
+  { dx: 1, dy: -1, d: 'M10 10 L50 15 L40 50 Z', spin: 1 },
+  { dx: -1.1, dy: 0.2, d: 'M5 20 L45 5 L55 40 L20 55 Z', spin: 1 },
+  { dx: 1.15, dy: 0.15, d: 'M5 30 L30 5 L50 25 L35 55 Z', spin: -1 },
+  { dx: -0.6, dy: 0.9, d: 'M10 10 L50 15 L40 50 Z', spin: -1 },
+  { dx: 0.7, dy: 0.95, d: 'M5 20 L45 5 L55 40 L20 55 Z', spin: 1 },
+  { dx: 0, dy: -1.2, d: 'M5 30 L30 5 L50 25 L35 55 Z', spin: 1 },
+  { dx: -0.3, dy: -1.1, d: 'M10 10 L50 15 L40 50 Z', spin: -1 },
 ];
 
-export default function EggComponent({ 
-  type, 
-  progress, 
-  onTap, 
-  isCracked, 
+const RIPPLE_SLOTS = 3;
+
+export default function EggComponent({
+  type,
+  progress,
+  onTap,
+  isCracked,
   isCooldown,
   isLoser = false,
   testCrackLevel = null,
@@ -95,158 +93,167 @@ export default function EggComponent({
 }: EggProps) {
   const eggW = Math.round(size);
   const eggH = Math.round(size * (220 / 180));
-  const bounceAnim = useRef(new Animated.Value(0)).current;
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const lastAnimAtRef = useRef(0);
   const onTapRef = useRef(onTap);
   onTapRef.current = onTap;
-  
-  // Fragment animations for broken state
-  const fragmentAnims = useRef(FRAGMENT_PATHS.map(() => ({
-    x: new Animated.Value(0),
-    y: new Animated.Value(0),
-    rotate: new Animated.Value(0),
-    opacity: new Animated.Value(0),
-  }))).current;
 
   const effectiveProgress = testCrackLevel !== null ? testCrackLevel : progress;
   const isBroken = isCracked || effectiveProgress >= 100;
-  const [showYolk, setShowYolk] = useState(isBroken);
-  const prevBrokenRef = useRef(isBroken);
+  const heat = Math.min(1, Math.max(0, effectiveProgress / 100));
 
-  // fragmentAnims ref is stable for the component lifetime
-  useEffect(() => {
-    if (isBroken && !prevBrokenRef.current) {
-      setShowYolk(true);
-      fragmentAnims.forEach((anim, i) => {
-        const direction = i % 2 === 0 ? 1 : -1;
-        const randomX = (Math.random() * 80 + 40) * direction;
-        const randomY = Math.random() * 60 + 40;
-        const randomRotate = (Math.random() * 90 - 45) * direction;
-        
-        Animated.parallel([
-          Animated.timing(anim.x, {
-            toValue: randomX,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim.y, {
-            toValue: randomY,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim.rotate, {
-            toValue: randomRotate,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim.opacity, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
-    } else if (!isBroken && prevBrokenRef.current) {
-      setShowYolk(false);
-      fragmentAnims.forEach(anim => {
-        anim.x.setValue(0);
-        anim.y.setValue(0);
-        anim.rotate.setValue(0);
-        anim.opacity.setValue(0);
-      });
-    }
-    prevBrokenRef.current = isBroken;
-  }, [isBroken]);
+  /* ---------------- tap: squash & stretch + wiggle + ripple ---------------- */
+  const squash = useRef(new Animated.Value(0)).current; // 0 = rest, 1 = squashed
+  const wiggle = useRef(new Animated.Value(0)).current; // px left/right
+  const lastAnimAtRef = useRef(0);
+  const ripples = useRef(Array.from({ length: RIPPLE_SLOTS }, () => new Animated.Value(1))).current;
+  const [ripplePos, setRipplePos] = useState<{ x: number; y: number }[]>(() =>
+    Array.from({ length: RIPPLE_SLOTS }, () => ({ x: 0, y: 0 }))
+  );
+  const rippleSlot = useRef(0);
 
-  const handleTap = useCallback(() => {
+  const handleTap = useCallback((e: GestureResponderEvent) => {
     onTapRef.current(0, 0);
 
     const now = Date.now();
-    const minAnimGap = Platform.OS === "web" ? 50 : 110;
-    if (now - lastAnimAtRef.current < minAnimGap) return;
+    if (now - lastAnimAtRef.current < (IS_WEB ? 45 : 90)) return;
     lastAnimAtRef.current = now;
 
-    bounceAnim.stopAnimation();
-    scaleAnim.stopAnimation();
-    bounceAnim.setValue(0);
-    scaleAnim.setValue(1);
-
-    Animated.parallel([
-      Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: -6,
-          duration: 45,
-          useNativeDriver: true,
-        }),
-        Animated.spring(bounceAnim, {
-          toValue: 0,
-          friction: 5,
-          tension: 220,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 0.95,
-          duration: 45,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 4,
-          tension: 200,
-          useNativeDriver: true,
-        }),
-      ]),
+    // squash then spring back (scaleX in / scaleY out)
+    squash.stopAnimation();
+    squash.setValue(0);
+    Animated.sequence([
+      Animated.timing(squash, { toValue: 1, duration: 55, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.spring(squash, { toValue: 0, friction: 4, tension: 260, useNativeDriver: true }),
     ]).start();
-  }, [bounceAnim, scaleAnim]);
+
+    // quick decaying side-to-side wiggle
+    wiggle.stopAnimation();
+    Animated.sequence([
+      Animated.timing(wiggle, { toValue: 9, duration: 35, useNativeDriver: true }),
+      Animated.timing(wiggle, { toValue: -7, duration: 50, useNativeDriver: true }),
+      Animated.timing(wiggle, { toValue: 4, duration: 45, useNativeDriver: true }),
+      Animated.timing(wiggle, { toValue: 0, duration: 45, useNativeDriver: true }),
+    ]).start();
+
+    // ring ripple where the finger landed
+    const slot = rippleSlot.current;
+    rippleSlot.current = (slot + 1) % RIPPLE_SLOTS;
+    const { locationX, locationY } = e.nativeEvent;
+    const x = Number.isFinite(locationX) ? locationX : eggW / 2;
+    const y = Number.isFinite(locationY) ? locationY : eggH / 2;
+    setRipplePos((prev) => {
+      const next = prev.slice();
+      next[slot] = { x, y };
+      return next;
+    });
+    const r = ripples[slot];
+    r.stopAnimation();
+    r.setValue(0);
+    Animated.timing(r, { toValue: 1, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, [squash, wiggle, ripples, eggW, eggH]);
+
+  /* ---------------- heat wobble when it's about to crack ---------------- */
+  const shiver = useRef(new Animated.Value(0)).current;
+  const hotLevel = isBroken ? 0 : effectiveProgress >= 90 ? 2 : effectiveProgress >= 70 ? 1 : 0;
+  useEffect(() => {
+    if (!hotLevel) {
+      shiver.setValue(0);
+      return;
+    }
+    const ms = hotLevel === 2 ? 38 : 55;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shiver, { toValue: 1, duration: ms, useNativeDriver: true }),
+        Animated.timing(shiver, { toValue: -1, duration: ms * 2, useNativeDriver: true }),
+        Animated.timing(shiver, { toValue: 0, duration: ms, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [hotLevel, shiver]);
+  const shiverAmp = hotLevel === 2 ? 4 : hotLevel === 1 ? 2 : 0;
+
+  /* ---------------- burst ---------------- */
+  const burst = useRef(new Animated.Value(isBroken ? 1 : 0)).current; // shards fly 0 -> 1
+  const ring = useRef(new Animated.Value(isBroken ? 1 : 0)).current; // shockwave
+  const pop = useRef(new Animated.Value(isBroken ? 1 : 0)).current; // broken egg pop-in
+  const [showBroken, setShowBroken] = useState(isBroken);
+  const prevBrokenRef = useRef(isBroken);
+
+  useEffect(() => {
+    if (isBroken && !prevBrokenRef.current) {
+      setShowBroken(true);
+      burst.setValue(0);
+      ring.setValue(0);
+      pop.setValue(0);
+      Animated.parallel([
+        Animated.timing(burst, { toValue: 1, duration: 950, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(ring, { toValue: 1, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.spring(pop, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }),
+      ]).start();
+    } else if (!isBroken && prevBrokenRef.current) {
+      setShowBroken(false);
+      burst.setValue(0);
+      ring.setValue(0);
+      pop.setValue(0);
+    }
+    prevBrokenRef.current = isBroken;
+  }, [isBroken, burst, ring, pop]);
 
   const [gradientStart, gradientEnd] = getEggGradient(type);
   const config = EGG_CONFIGS[type];
 
-  // Determine crack stage based on progress
-  const getCrackStage = () => {
-    if (effectiveProgress >= 100 || isCracked) return 'broken';
-    if (effectiveProgress >= 70) return 'stage4';
-    if (effectiveProgress >= 50) return 'stage3';
-    if (effectiveProgress >= 30) return 'stage2';
-    if (effectiveProgress >= 10) return 'stage1';
-    return null;
-  };
+  const crackStage = isBroken
+    ? null
+    : effectiveProgress >= 70 ? 'stage4'
+    : effectiveProgress >= 50 ? 'stage3'
+    : effectiveProgress >= 30 ? 'stage2'
+    : effectiveProgress >= 10 ? 'stage1'
+    : null;
 
-  const crackStage = getCrackStage();
+  // Shard flight paths: fast outward burst (ease-out) + gravity pulling them down.
+  const shardAnims = useMemo(() => {
+    const R = eggW * 1.25;
+    const G = eggW * 0.9;
+    const ks = [0, 0.15, 0.3, 0.5, 0.7, 0.85, 1];
+    const out = (k: number) => 1 - Math.pow(1 - k, 3);
+    return SHARDS.map((s) => ({
+      x: burst.interpolate({ inputRange: ks, outputRange: ks.map((k) => s.dx * R * out(k)) }),
+      y: burst.interpolate({ inputRange: ks, outputRange: ks.map((k) => s.dy * R * out(k) + G * out(k) * out(k)) }),
+      rot: burst.interpolate({ inputRange: [0, 1], outputRange: ['0deg', `${s.spin * 400}deg`] }),
+      opacity: burst.interpolate({ inputRange: [0, 0.05, 0.6, 1], outputRange: [0, 1, 1, 0] }),
+    }));
+  }, [burst, eggW]);
+
+  const glowStyle = IS_WEB
+    ? ({ filter: `drop-shadow(0 0 ${Math.round(10 + heat * 26)}px rgba(255, ${Math.round(200 - heat * 100)}, 0, ${(0.25 + heat * 0.45).toFixed(2)}))` } as object)
+    : { shadowColor: '#FF8A00', shadowOpacity: 0.2 + heat * 0.5, shadowRadius: 8 + heat * 18, shadowOffset: { width: 0, height: 0 } };
+
+  const shardSize = Math.round(eggW * 0.36);
 
   return (
-    <TouchableWithoutFeedback
-      onPressIn={handleTap}
-      disabled={isCooldown || isCracked}
-    >
-      <Animated.View
+    <TouchableWithoutFeedback onPressIn={handleTap} disabled={isCooldown || isCracked}>
+      <View
         style={[
           styles.container,
-          styles.eggWrapper,
-          Platform.OS === 'web'
-            ? ({
-                outlineStyle: 'none',
-                outlineWidth: 0,
-                WebkitTapHighlightColor: 'transparent',
-              } as object)
-            : null,
-          {
-            transform: [
-              { translateY: bounceAnim },
-              { translateX: shakeAnim },
-              { scale: scaleAnim },
-            ],
-          },
+          IS_WEB ? ({ outlineStyle: 'none', outlineWidth: 0, WebkitTapHighlightColor: 'transparent', cursor: 'pointer' } as object) : null,
         ]}
       >
-        <View style={styles.eggContainer}>
-          {/* Main Egg or Broken Pieces */}
-          {!showYolk ? (
-            <View style={[styles.eggGradient, { width: eggW, height: eggH }, isLoser && styles.loserEgg]}>
+        <View style={[styles.eggContainer, { width: eggW, height: eggH }]}>
+          {!showBroken ? (
+            <Animated.View
+              style={[
+                { width: eggW, height: eggH },
+                glowStyle,
+                isLoser && styles.loserEgg,
+                {
+                  transform: [
+                    { translateX: Animated.add(wiggle, shiver.interpolate({ inputRange: [-1, 1], outputRange: [-shiverAmp, shiverAmp] })) },
+                    { scaleX: squash.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) },
+                    { scaleY: squash.interpolate({ inputRange: [0, 1], outputRange: [1, 0.92] }) },
+                  ],
+                },
+              ]}
+            >
               <Svg width={eggW} height={eggH} viewBox="0 0 180 220">
                 <Defs>
                   <SvgGradient id="eggFill" x1="54" y1="0" x2="126" y2="220" gradientUnits="userSpaceOnUse">
@@ -254,97 +261,102 @@ export default function EggComponent({
                     <Stop offset="1" stopColor={gradientEnd} />
                   </SvgGradient>
                 </Defs>
-                <Ellipse
-                  cx="90"
-                  cy="110"
-                  rx="85"
-                  ry="105"
-                  fill="url(#eggFill)"
-                  stroke="none"
-                />
-
-                {/* Shine highlight */}
-                <Ellipse
-                  cx="70"
-                  cy="70"
-                  rx="25"
-                  ry="35"
-                  fill="rgba(255,255,255,0.3)"
-                  stroke="none"
-                />
-
-                {/* Crack lines based on progress */}
-                {crackStage && crackStage !== 'broken' && CRACK_PATHS[crackStage].map((path, i) => (
-                  <Path
-                    key={i}
-                    d={path}
-                    stroke="rgba(0,0,0,0.3)"
-                    strokeWidth="2"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
+                <Ellipse cx="90" cy="110" rx="85" ry="105" fill="url(#eggFill)" stroke="none" />
+                <Ellipse cx="70" cy="70" rx="25" ry="35" fill="rgba(255,255,255,0.3)" stroke="none" />
+                {crackStage && CRACK_PATHS[crackStage].map((path, i) => (
+                  <Path key={i} d={path} stroke="rgba(0,0,0,0.3)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                 ))}
               </Svg>
-            </View>
+            </Animated.View>
           ) : (
-            /* Broken egg with scattered fragments */
-            <View style={[styles.eggGradient, { width: eggW, height: eggH }, styles.brokenEggContainer]}>
-              <Svg width={eggW} height={eggH} viewBox="0 0 180 220" style={StyleSheet.absoluteFill}>
-                {/* Egg white oozing */}
-                <Ellipse cx="90" cy="110" rx="70" ry="85" fill="rgba(255,255,255,0.3)" />
-                
-                {/* Yolk inside */}
-                <Circle cx="90" cy="110" r="45" fill="#FFD700" />
-                <Circle cx="75" cy="95" r="12" fill="rgba(255,255,255,0.4)" />
-              </Svg>
-              
-              {/* Scattered fragments */}
-              {FRAGMENT_PATHS.map((fragment, i) => (
+            <>
+              {/* gold shockwave ring */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.shockwave,
+                  {
+                    width: eggW,
+                    height: eggW,
+                    borderRadius: eggW / 2,
+                    left: 0,
+                    top: (eggH - eggW) / 2,
+                    opacity: ring.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 1, 0] }),
+                    transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [0.3, 2.4] }) }],
+                  },
+                ]}
+              />
+
+              {/* the cracked-open egg: white + yolk */}
+              <Animated.View
+                style={{
+                  width: eggW,
+                  height: eggH,
+                  transform: [{ scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
+                  opacity: pop.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 1] }),
+                }}
+              >
+                <Svg width={eggW} height={eggH} viewBox="0 0 180 220">
+                  <Ellipse cx="90" cy="132" rx="80" ry="62" fill="rgba(255,255,255,0.9)" />
+                  <Ellipse cx="70" cy="122" rx="22" ry="14" fill="rgba(255,255,255,0.7)" />
+                  <Circle cx="90" cy="130" r="40" fill="#FFC21A" />
+                  <Circle cx="90" cy="130" r="40" fill="none" stroke="#F59E0B" strokeWidth="3" />
+                  <Circle cx="76" cy="116" r="11" fill="rgba(255,255,255,0.55)" />
+                </Svg>
+              </Animated.View>
+
+              {/* shell shards flying out */}
+              {SHARDS.map((s, i) => (
                 <Animated.View
                   key={i}
-                  style={[
-                    styles.fragment,
-                    {
-                      transform: [
-                        { translateX: fragmentAnims[i].x },
-                        { translateY: fragmentAnims[i].y },
-                        { rotate: fragmentAnims[i].rotate.interpolate({
-                          inputRange: [-100, 100],
-                          outputRange: ['-100deg', '100deg'],
-                        }) },
-                      ],
-                      opacity: fragmentAnims[i].opacity,
-                    },
-                  ]}
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    width: shardSize,
+                    height: shardSize,
+                    left: eggW / 2 - shardSize / 2,
+                    top: eggH / 2 - shardSize / 2,
+                    opacity: shardAnims[i].opacity,
+                    transform: [
+                      { translateX: shardAnims[i].x },
+                      { translateY: shardAnims[i].y },
+                      { rotate: shardAnims[i].rot },
+                    ],
+                  }}
                 >
-                  <Svg width="60" height="60" viewBox="0 0 60 60">
-                    <Path
-                      d={fragment.d}
-                      fill={gradientEnd}
-                      stroke="rgba(0,0,0,0.2)"
-                      strokeWidth="1"
-                    />
+                  <Svg width={shardSize} height={shardSize} viewBox="0 0 60 60">
+                    <Path d={s.d} fill={i % 2 ? gradientEnd : gradientStart} stroke="rgba(0,0,0,0.25)" strokeWidth="1.5" />
                   </Svg>
                 </Animated.View>
               ))}
-            </View>
+            </>
           )}
 
-          {/* Loser overlay */}
+          {/* tap ripples */}
+          {!showBroken &&
+            ripples.map((r, i) => (
+              <Animated.View
+                key={i}
+                pointerEvents="none"
+                style={[
+                  styles.ripple,
+                  {
+                    left: ripplePos[i].x - 50,
+                    top: ripplePos[i].y - 50,
+                    opacity: r.interpolate({ inputRange: [0, 1], outputRange: [0.85, 0] }),
+                    transform: [{ scale: r.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1.5] }) }],
+                  },
+                ]}
+              />
+            ))}
+
+          {/* Loser overlay (test mode) */}
           {isLoser && (
             <View style={styles.loserOverlay}>
               <Text style={styles.loserEmoji}>😢</Text>
               <Text style={styles.loserText}>So Close!</Text>
             </View>
           )}
-
-          {/* Winner glow */}
-          {showYolk && !isLoser && (
-            <Animated.View style={styles.yolkGlow}>
-              <Text style={styles.yolkEmoji}>🎉</Text>
-            </Animated.View>
-          )}
-
         </View>
 
         <View style={[styles.eggLabel, compact && styles.eggLabelCompact]}>
@@ -355,7 +367,7 @@ export default function EggComponent({
             </View>
           )}
         </View>
-      </Animated.View>
+      </View>
     </TouchableWithoutFeedback>
   );
 }
@@ -365,22 +377,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  eggWrapper: {
-    alignItems: 'center',
-  },
   eggContainer: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'visible',
   },
-  eggGradient: {
-    width: 180,
-    height: 220,
+  ripple: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.85)',
   },
-  brokenEggContainer: {
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
+  shockwave: {
+    position: 'absolute',
+    borderWidth: 8,
+    borderColor: 'rgba(255,215,0,0.9)',
   },
   loserEgg: {
     opacity: 0.7,
@@ -407,25 +421,6 @@ const styles = StyleSheet.create({
   loserTextStyle: {
     opacity: 0.6,
   },
-  fragment: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-  },
-  yolkGlow: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginLeft: -30,
-    marginTop: -30,
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  yolkEmoji: {
-    fontSize: 40,
-  },
   eggLabel: {
     marginTop: 20,
     alignItems: 'center',
@@ -435,9 +430,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 4,
   },
-  eggNameCompact: {
-    fontSize: 15,
-  },
   eggName: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -445,6 +437,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  eggNameCompact: {
+    fontSize: 15,
   },
   badge: {
     paddingHorizontal: 12,
