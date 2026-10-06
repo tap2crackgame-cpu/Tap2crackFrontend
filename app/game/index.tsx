@@ -286,6 +286,9 @@ export default function Tap2CrackGame() {
   const eggHasBadge = !!currentEgg && currentEgg.egg.type !== "normal" && currentEgg.egg.type !== "no-powerup";
   const stageHeight = eggH + (isShort ? 48 : 64) + (eggHasBadge ? 26 : 0);
   const chickenSize = isPhone ? 44 : 56;
+  const bubbleSize = width < 360 ? 52 : 60;
+  // Centre of the egg inside the egg stage (stage centres egg + label vertically).
+  const eggCenterY = Math.round((stageHeight - eggH) / 2 - 10 + eggH * 0.5);
 
   const laneStyles = useMemo(() => {
     const sidePush = isPhone ? 6 : 18;
@@ -313,6 +316,8 @@ export default function Tap2CrackGame() {
     anim: Animated.Value;
   }>>([]);
   const baseNames = useRef([...BOT_DISPLAY_NAMES]).current;
+  const bubbleVisibleRef = useRef(false);
+  bubbleVisibleRef.current = mobileBubbleVisible;
 
   const spawnPowerUpPopup = useCallback(() => {
     if (!popupsEligible) return;
@@ -322,7 +327,8 @@ export default function Tap2CrackGame() {
       if (prev.length >= max) return prev;
 
       const activeLanes = new Set(prev.map(p => p.lane));
-      const lanes = [0, 1, 2, 3, 4, 5];
+      // Even lanes are on the left. Keep the right side clear while the 2x/3x bubble is there.
+      const lanes = bubbleVisibleRef.current ? [0, 2, 4] : [0, 1, 2, 3, 4, 5];
       const free = lanes.filter(l => !activeLanes.has(l));
       const lane = (free.length ? free : lanes)[Math.floor(Math.random() * (free.length ? free.length : lanes.length))];
 
@@ -488,7 +494,7 @@ export default function Tap2CrackGame() {
           ]} 
           pointerEvents="none"
         />
-        <PowerUpBackground activePowerUp={activePowerUp} isHappyHour={!!currentEgg.isHappyHour} />
+        <PowerUpBackground activePowerUp={activePowerUp} isHappyHour={!!currentEgg.isHappyHour} clearRight={mobileBubbleVisible} />
 
         {showDesktopRails ? (
           <View style={[styles.desktopRailLeft, { top: Math.min(height * 0.26, height * 0.5 - 140) }]} pointerEvents="box-none">
@@ -552,52 +558,6 @@ export default function Tap2CrackGame() {
           </View>
         ) : null}
 
-        {showMobilePowerBubbleMount ? (
-          <Animated.View
-            style={[
-              styles.mobilePowerBubbleWrap,
-              { top: height * 0.5, opacity: mobileBubbleOpacity, transform: [{ translateY: -30 }, { scale: mobileBubbleScale }] },
-            ]}
-            pointerEvents={mobileBubbleVisible ? "box-none" : "none"}
-          >
-            <TouchableOpacity
-              activeOpacity={0.88}
-              disabled={isPaymentLoading || !mobileBubbleVisible}
-              onPress={() => powerUpPanelRef.current?.openPurchase(mobileBubbleTier)}
-              style={[
-                styles.mobilePowerBubble,
-                (isPaymentLoading || !mobileBubbleVisible) && styles.mobilePowerBubbleDisabled,
-              ]}
-            >
-              <LinearGradient
-                colors={
-                  activePowerUp?.type === mobileBubbleTier
-                    ? ["#FFD700", "#FFA500"]
-                    : mobileBubbleTier === "3x"
-                      ? ["#9B59B6", "#8E44AD"]
-                      : ["#4ECDC4", "#44B3AB"]
-                }
-                style={styles.mobilePowerBubbleGradient}
-              >
-                {isPowerUpActivating(mobileBubbleTier) ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : mobileBubbleTier === "3x" ? (
-                  <>
-                    <Crown size={18} color="#FFF" />
-                    <Text style={styles.mobilePowerBubbleLabel}>3x</Text>
-                    <Text style={styles.mobilePowerBubblePrice}>₦{railCost3x}</Text>
-                  </>
-                ) : (
-                  <>
-                    <Zap size={18} color="#FFF" />
-                    <Text style={styles.mobilePowerBubbleLabel}>2x</Text>
-                    <Text style={styles.mobilePowerBubblePrice}>₦{railCost2x}</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-        ) : null}
         
         {/* One compact header row: who you are + online count on the left, round icon buttons on the right.
             (Replaces the separate pill row so the top of the screen stays clean.) */}
@@ -673,7 +633,7 @@ export default function Tap2CrackGame() {
           {currentEgg && (
             <>
               <View style={[styles.eggStage, { width: stageWidth, height: stageHeight }]}>
-                <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown} size={chickenSize} />
+                <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown} size={chickenSize} avoidRight={mobileBubbleVisible} />
                 {powerUpPopups.length > 0 && (
                   <View pointerEvents="none" style={styles.powerUpPopupsLayer}>
                     {powerUpPopups.map(p => (
@@ -710,6 +670,59 @@ export default function Tap2CrackGame() {
                   </View>
                 )}
 
+                {/* 2x/3x offer bubble: sits in the empty space right of the egg and scrolls with it. */}
+                {showMobilePowerBubbleMount ? (
+                  <Animated.View
+                    style={[
+                      styles.mobilePowerBubbleWrap,
+                      {
+                        top: Math.round(eggCenterY - bubbleSize / 2),
+                        opacity: mobileBubbleOpacity,
+                        transform: [{ scale: mobileBubbleScale }],
+                      },
+                    ]}
+                    pointerEvents={mobileBubbleVisible ? "box-none" : "none"}
+                  >
+                    <TouchableOpacity
+                      activeOpacity={0.88}
+                      disabled={isPaymentLoading || !mobileBubbleVisible}
+                      onPress={() => powerUpPanelRef.current?.openPurchase(mobileBubbleTier)}
+                      style={[
+                        styles.mobilePowerBubble,
+                        { width: bubbleSize, height: bubbleSize, borderRadius: bubbleSize / 2 },
+                        (isPaymentLoading || !mobileBubbleVisible) && styles.mobilePowerBubbleDisabled,
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={
+                          activePowerUp?.type === mobileBubbleTier
+                            ? ["#FFD700", "#FFA500"]
+                            : mobileBubbleTier === "3x"
+                              ? ["#9B59B6", "#8E44AD"]
+                              : ["#4ECDC4", "#44B3AB"]
+                        }
+                        style={styles.mobilePowerBubbleGradient}
+                      >
+                        {isPowerUpActivating(mobileBubbleTier) ? (
+                          <ActivityIndicator color="#FFF" size="small" />
+                        ) : mobileBubbleTier === "3x" ? (
+                          <>
+                            <Crown size={18} color="#FFF" />
+                            <Text style={styles.mobilePowerBubbleLabel}>3x</Text>
+                            <Text style={styles.mobilePowerBubblePrice}>₦{railCost3x}</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={18} color="#FFF" />
+                            <Text style={styles.mobilePowerBubbleLabel}>2x</Text>
+                            <Text style={styles.mobilePowerBubblePrice}>₦{railCost2x}</Text>
+                          </>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ) : null}
+
                 <View style={styles.eggTopLayer}>
                   <Egg 
                     type={mainEgg.type} 
@@ -729,7 +742,8 @@ export default function Tap2CrackGame() {
                   tapMultiplier={activePowerUp?.multiplier || (currentEgg.isHappyHour ? 2 : 1)}
                   crackProgress={progressPct}
                   centerX={stageWidth / 2}
-                  centerY={Math.round((stageHeight - eggH) / 2 - 10 + eggH * 0.45)}
+                  centerY={Math.round(eggCenterY - eggH * 0.05)}
+                  avoidRight={mobileBubbleVisible}
                   compact={isPhone}
                 />
               </View>
@@ -1076,8 +1090,8 @@ const styles = StyleSheet.create({
   desktopWatchAdSub: { fontSize: 10, color: "rgba(255,255,255,0.65)", marginTop: 2 },
   mobilePowerBubbleWrap: {
     position: "absolute",
-    right: 10,
-    zIndex: 25,
+    right: 0,
+    zIndex: 8,
     pointerEvents: "box-none",
   },
   mobilePowerBubble: {

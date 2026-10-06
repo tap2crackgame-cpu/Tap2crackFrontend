@@ -77,7 +77,7 @@ function PeekingChicken({ spot, size, onDone }: { spot: number; size: number; on
  * A chicken (two when the egg is hot) peeks in at the side of the egg every few seconds while people are tapping.
  * Lives inside the egg stage, so it scrolls away with the page and never covers the egg itself.
  */
-function CheerCrowd({ taps, progress, hidden = false, size = 52 }: { taps: number; progress: number; hidden?: boolean; size?: number }) {
+function CheerCrowd({ taps, progress, hidden = false, size = 52, avoidRight = false }: { taps: number; progress: number; hidden?: boolean; size?: number; /** keep the right side clear (2x/3x offer bubble is there) */ avoidRight?: boolean }) {
   const [still, setStill] = useState(false);
   const [peeks, setPeeks] = useState<Peek[]>([]);
   const idRef = useRef(0);
@@ -86,6 +86,8 @@ function CheerCrowd({ taps, progress, hidden = false, size = 52 }: { taps: numbe
   const maxAtOnce = stage >= 2 ? 2 : 1;
   const maxRef = useRef(maxAtOnce);
   maxRef.current = maxAtOnce;
+  const avoidRightRef = useRef(avoidRight);
+  avoidRightRef.current = avoidRight;
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setStill).catch(() => {});
@@ -104,7 +106,8 @@ function CheerCrowd({ taps, progress, hidden = false, size = 52 }: { taps: numbe
         setPeeks((prev) => {
           if (prev.length >= maxRef.current) return prev;
           const used = new Set(prev.map((p) => p.spot));
-          const free = SPOTS.map((_, i) => i).filter((i) => !used.has(i));
+          const free = SPOTS.map((_, i) => i).filter((i) => !used.has(i) && !(avoidRightRef.current && SPOTS[i].side === "right"));
+          if (!free.length) return prev;
           const spot = free[Math.floor(Math.random() * free.length)];
           return [...prev, { id: idRef.current++, spot }];
         });

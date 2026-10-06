@@ -4,6 +4,8 @@ import { View, Text, StyleSheet, Animated, Easing, useWindowDimensions } from 'r
 interface PowerUpBackgroundProps {
   activePowerUp: { type: string; multiplier: number } | null;
   isHappyHour?: boolean;
+  /** Hide the right-side decorations (the 2x/3x offer bubble is showing there). */
+  clearRight?: boolean;
 }
 
 type Mode = '2x' | '3x';
@@ -44,7 +46,7 @@ function Emoji({ char, size }: { char: string; size: number }) {
   );
 }
 
-function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgroundProps) {
+function PowerUpBackground({ activePowerUp, isHappyHour = false, clearRight = false }: PowerUpBackgroundProps) {
   const { width, height } = useWindowDimensions();
   const isPhone = width < 420;
 
@@ -121,6 +123,7 @@ function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgr
       </Animated.View>
 
       {/* big multiplier badge (right) */}
+      {!clearRight && (
       <Animated.View
         style={[
           styles.abs,
@@ -132,19 +135,24 @@ function PowerUpBackground({ activePowerUp, isHappyHour = false }: PowerUpBackgr
         <Text style={[styles.bigText, isPhone && styles.bigTextSm, { color: t.color }]}>{t.big}</Text>
         <Text style={[styles.bigSub, isPhone && styles.bigSubSm, { color: t.color }]}>TAP</Text>
       </Animated.View>
+      )}
 
       {/* side sparks beside the egg */}
       <Animated.View style={[styles.abs, { top: height * 0.5, left: edge, transform: [{ translateX: x2 }] }]}>
         <Emoji char={t.sparkL} size={sparkSize} />
       </Animated.View>
-      <Animated.View style={[styles.abs, { top: height * 0.47, right: edge, transform: [{ translateX: x1 }] }]}>
-        <Emoji char={t.sparkR} size={sparkSize} />
-      </Animated.View>
+      {!clearRight && (
+        <Animated.View style={[styles.abs, { top: height * 0.47, right: edge, transform: [{ translateX: x1 }] }]}>
+          <Emoji char={t.sparkR} size={sparkSize} />
+        </Animated.View>
+      )}
 
       {/* lower character + decor */}
-      <Animated.View style={[styles.abs, { bottom: height * 0.2, right: edge + 6, transform: [{ translateY: y2 }, { rotate: rot }] }]}>
-        <Emoji char={t.char2} size={charSize} />
-      </Animated.View>
+      {!clearRight && (
+        <Animated.View style={[styles.abs, { bottom: height * 0.2, right: edge + 6, transform: [{ translateY: y2 }, { rotate: rot }] }]}>
+          <Emoji char={t.char2} size={charSize} />
+        </Animated.View>
+      )}
       <Animated.View style={[styles.abs, { bottom: height * 0.28, left: edge + 10, transform: [{ translateY: y1 }] }]}>
         <Emoji char={t.decor} size={decorSize} />
       </Animated.View>
@@ -197,7 +205,10 @@ export const PowerUpActiveStrip = memo(
 /** Only re-render when the power-up actually changes, not on every tap. */
 export default memo(
   PowerUpBackground,
-  (a, b) => a.activePowerUp?.type === b.activePowerUp?.type && !!a.isHappyHour === !!b.isHappyHour
+  (a, b) =>
+    a.activePowerUp?.type === b.activePowerUp?.type &&
+    !!a.isHappyHour === !!b.isHappyHour &&
+    !!a.clearRight === !!b.clearRight
 );
 
 const styles = StyleSheet.create({

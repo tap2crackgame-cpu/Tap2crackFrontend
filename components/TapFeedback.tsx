@@ -23,6 +23,8 @@ interface TapFeedbackProps {
   centerY: number;
   /** Phones: slightly smaller text/emoji and shorter float so nothing gets cut off. */
   compact?: boolean;
+  /** Keep the "+2/+3" pop on the left (the 2x/3x offer bubble is on the right). */
+  avoidRight?: boolean;
 }
 
 type Pun = { text: string; emoji: string };
@@ -66,7 +68,7 @@ const BOMB_EMOJIS = ['💣', '💣', '💥', '🔥', '⚡'];
 const NORMAL_EMOJIS = ['✨', '🌟', '⚡', '💥', '🥚', '🐣', '🎯', '👏', '💪'];
 const MAX_PARTICLES = 10;
 
-export default memo(function TapFeedback({ tapCount, consecutiveTaps, tapMultiplier = 1, crackProgress = 0, centerX, centerY, compact = false }: TapFeedbackProps) {
+export default memo(function TapFeedback({ tapCount, consecutiveTaps, tapMultiplier = 1, crackProgress = 0, centerX, centerY, compact = false, avoidRight = false }: TapFeedbackProps) {
   const [particles, setParticles] = useState<TapParticle[]>([]);
   const particleIdRef = useRef(0);
   const lastTapCountRef = useRef(0);
@@ -107,7 +109,7 @@ export default memo(function TapFeedback({ tapCount, consecutiveTaps, tapMultipl
       newParticles.push({
         id: particleIdRef.current++,
         // off to one side so it doesn't sit on top of the pun
-        x: cx + (Math.random() < 0.5 ? -1 : 1) * (compact ? 70 : 90),
+        x: cx + (avoidRight || Math.random() < 0.5 ? -1 : 1) * (compact ? 70 : 90),
         y: cy + 10 + (Math.random() - 0.5) * 20,
         emoji: tapMultiplier >= 3 ? '⚡' : '✨',
         text: `+${tapMultiplier}`,
@@ -166,7 +168,7 @@ export default memo(function TapFeedback({ tapCount, consecutiveTaps, tapMultipl
     }, 1100);
 
     lastTapCountRef.current = tapCount;
-  }, [tapCount, consecutiveTaps, tapMultiplier, crackProgress, centerX, centerY, compact]);
+  }, [tapCount, consecutiveTaps, tapMultiplier, crackProgress, centerX, centerY, compact, avoidRight]);
 
   return (
     <View style={styles.container} pointerEvents="none">
