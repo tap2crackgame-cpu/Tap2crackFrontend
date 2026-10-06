@@ -7,6 +7,8 @@ interface ProgressBarProps {
   progress: number;
   othersActive?: boolean;
   othersTapShare?: number;
+  /** Replaces the hint text above the bar (e.g. between rounds). */
+  message?: string;
 }
 
 const IS_WEB = Platform.OS === 'web';
@@ -60,7 +62,7 @@ const FireLayer = memo(function FireLayer({
   );
 });
 
-function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
+function ProgressBar({ progress, othersActive = false, message }: ProgressBarProps) {
   const cleanProgress = Number.isFinite(progress) ? progress : 0;
   const raw = Math.min(Math.max(cleanProgress, 0), 100);
   const clampedProgress = raw >= 99.5 ? 100 : raw;
@@ -125,6 +127,7 @@ function ProgressBar({ progress, othersActive = false }: ProgressBarProps) {
 
   // FOMO copy: the closer it is, the more it says someone else is about to grab it.
   const getNotificationText = () => {
+    if (message) return message;
     if (clampedProgress >= 90) return "🚨 ABOUT TO CRACK! Someone wins THIS second!";
     if (clampedProgress >= 70) return "It's HOT! Don't let someone else steal it!";
     if (othersActive && clampedProgress >= 50) return "⚡ Everyone's tapping! Are you in?";

@@ -20,6 +20,7 @@ import TapFeedback from "@/components/TapFeedback";
 import PowerUpBackground, { PowerUpActiveStrip } from "@/components/PowerUpBackground";
 import CheerCrowd from "@/components/CheerCrowd";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
+import CluckyNest from "@/components/CluckyNest";
 import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
@@ -299,6 +300,43 @@ export default function Tap2CrackGame() {
     if (!roundEnded) setBurstHold(false);
     prevRoundEndedRef.current = roundEnded;
   }, [roundEnded, burstFlash, stageShake]);
+
+  // ---- Between rounds: Clucky lays the next egg ----
+  // After the countdown, the old (broken) egg can hang around for a few seconds until the server
+  // starts the new round. Instead of a yolk + burning bar, Clucky sits on a nest "laying" the next egg,
+  // then the new egg pops out of the nest the moment the round really resets.
+  const LAY_MS = 900;
+  const eggBroken = !!currentEgg && (progressPct >= 100 || !!currentEgg.isCooldown || !!mainEgg?.isCooldown);
+  const cooldownEndMs = currentEgg?.cooldownEndTime ? Number(currentEgg.cooldownEndTime) : 0;
+  const [cooldownPassed, setCooldownPassed] = useState(true);
+  useEffect(() => {
+    const left = cooldownEndMs - Date.now();
+    if (!cooldownEndMs || left <= 0) {
+      setCooldownPassed(true);
+      return;
+    }
+    setCooldownPassed(false);
+    const t = setTimeout(() => setCooldownPassed(true), left);
+    return () => clearTimeout(t);
+  }, [cooldownEndMs]);
+  const waitingForEgg =
+    eggBroken && !burstHold && !showWinModal && !loseModalVisible && cooldownPassed && !testMode;
+
+  const [layingEgg, setLayingEgg] = useState(false);
+  const layAnim = useRef(new Animated.Value(1)).current;
+  const prevWaitingRef = useRef(waitingForEgg);
+  useEffect(() => {
+    // Clucky was waiting and a fresh egg has arrived -> lay it.
+    if (prevWaitingRef.current && !waitingForEgg && !eggBroken) {
+      setLayingEgg(true);
+      layAnim.setValue(0);
+      Animated.spring(layAnim, { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }).start();
+      const t = setTimeout(() => setLayingEgg(false), LAY_MS);
+      prevWaitingRef.current = waitingForEgg;
+      return () => clearTimeout(t);
+    }
+    prevWaitingRef.current = waitingForEgg;
+  }, [waitingForEgg, eggBroken, layAnim]);
 
   // ---- "ABOUT TO CRACK!" banner (85%+) ----
   const aboutToCrack = !!currentEgg && progressPct >= 85 && progressPct < 100 && !currentEgg.isCooldown;
@@ -700,7 +738,7 @@ export default function Tap2CrackGame() {
           {currentEgg && (
             <>
               <Animated.View style={[styles.eggStage, { width: stageWidth, height: stageHeight, transform: [{ translateX: stageShake }] }]}>
-                <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown} size={chickenSize} avoidRight={mobileBubbleVisible} />
+                <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown || waitingForEgg} size={chickenSize} avoidRight={mobileBubbleVisible} />
                 {powerUpPopups.length > 0 && (
                   <View pointerEvents="none" style={styles.powerUpPopupsLayer}>
                     {powerUpPopups.map(p => (
@@ -790,7 +828,25 @@ export default function Tap2CrackGame() {
                   </Animated.View>
                 ) : null}
 
-                <View style={styles.eggTopLayer}>
+                {(waitingForEgg || layingEgg) && (
+                  <View style={styles.nestLayer} pointerEvents="none">
+                    <CluckyNest mode={waitingForEgg ? "waiting" : "laying"} eggW={eggW} compact={isPhone} />
+                  </View>
+                )}
+
+                <Animated.View
+                  style={[
+                    styles.eggTopLayer,
+                    waitingForEgg && styles.eggHidden,
+                    layingEgg && {
+                      transform: [
+                        { translateY: layAnim.interpolate({ inputRange: [0, 1], outputRange: [eggH * 0.3, 0] }) },
+                        { scale: layAnim.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }) },
+                      ],
+                    },
+                  ]}
+                  pointerEvents={waitingForEgg ? "none" : "auto"}
+                >
                   <Egg 
                     type={mainEgg.type} 
                     progress={progressPct} 
@@ -802,7 +858,7 @@ export default function Tap2CrackGame() {
                     size={eggW}
                     compact={isShort}
                   />
-                </View>
+                </Animated.View>
                 <TapFeedback
                   tapCount={tapCount}
                   consecutiveTaps={consecutiveTaps}
@@ -819,11 +875,12 @@ export default function Tap2CrackGame() {
 
           <View style={[styles.progressWrap, { paddingHorizontal: padH }]}>
   <ProgressBar 
-    progress={progressPct} 
+    progress={waitingForEgg ? 0 : progressPct} 
+    message={waitingForEgg ? "🐔 Next egg coming up…" : undefined}
     othersActive={onlineUsers > 1}
     othersTapShare={currentEgg ? (otherPlayersTaps / currentEgg.totalTaps) * 100 : 0}
   />
-  {progressPct > 0 && (
+  {progressPct > 0 && !waitingForEgg && (
     <Text style={styles.progressText}>
       {Math.round(progressPct)}% cracked
       {onlineUsers > 1 && otherPlayersTaps > 0 && ` · ${otherPlayersTaps} taps from others`}
@@ -1295,6 +1352,15 @@ const styles = StyleSheet.create({
   },
   eggTopLayer: {
     zIndex: 2,
+  },
+  eggHidden: {
+    opacity: 0,
+  },
+  nestLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 3,
+    alignItems: "center",
+    justifyContent: "center",
   },
   powerUpPopup: {
     position: "absolute",
