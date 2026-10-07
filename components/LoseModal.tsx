@@ -89,7 +89,7 @@ export default function LoseModal({ visible, onJoinNext }: LoseModalProps) {
                 <Animated.Text style={[styles.eggBtnIcon, { transform: [{ translateX: eggShakeAnim }, { scale: eggScaleAnim }] }]}>
                   {eggCracked ? '🐣' : '🥚'}
                 </Animated.Text>
-                <Text style={styles.buttonText}>{eggCracked ? 'Locked in!' : 'Lock in for next round'}</Text>
+                <Text style={styles.buttonText}>{eggCracked ? 'Next round coming…' : 'Continue'}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </LinearGradient>

@@ -1044,7 +1044,9 @@ export default function Tap2CrackGame() {
         {/* white flash when the egg bursts */}
         <Animated.View pointerEvents="none" style={[styles.burstFlash, { opacity: burstFlash }]} />
 
-        {currentEgg?.isCooldown && !burstHold && 
+        {/* Order after a round: burst -> win/lose modal -> "Lock in for next round" -> Clucky lays the next egg.
+            The lock-in screen only appears once the win/lose modal has closed. */}
+        {currentEgg?.isCooldown && !burstHold && !showWinModal && !loseModalVisible &&
         currentEgg.cooldownEndTime && (
           <CooldownTimer 
             endTime={currentEgg.cooldownEndTime} 
