@@ -334,8 +334,27 @@ export default function Tap2CrackGame() {
     const t = setTimeout(() => setCooldownPassed(true), left);
     return () => clearTimeout(t);
   }, [cooldownEndMs]);
+  // Clucky must wait until this round's result has actually come in (win/lose modal or the
+  // cooldown). Until then the cracked egg + yolk just stays on screen. The result arrives from
+  // the server a moment after the burst, so without this Clucky could pop up on top of the yolk.
+  const [roundResultSeen, setRoundResultSeen] = useState(false);
+  const resultShowing = showWinModal || loseModalVisible || !!currentEgg?.isCooldown;
+  useEffect(() => {
+    if (!eggBroken) {
+      setRoundResultSeen(false);
+      return;
+    }
+    if (resultShowing) {
+      setRoundResultSeen(true);
+      return;
+    }
+    // safety net: if no result ever arrives (e.g. a dropped message), don't leave the yolk forever
+    const t = setTimeout(() => setRoundResultSeen(true), 8000);
+    return () => clearTimeout(t);
+  }, [eggBroken, resultShowing]);
+
   const waitingForEgg =
-    eggBroken && !burstHold && !showWinModal && !loseModalVisible && cooldownPassed && !testMode;
+    eggBroken && roundResultSeen && !burstHold && !showWinModal && !loseModalVisible && cooldownPassed && !testMode;
 
   const [layingEgg, setLayingEgg] = useState(false);
   const layAnim = useRef(new Animated.Value(1)).current;
