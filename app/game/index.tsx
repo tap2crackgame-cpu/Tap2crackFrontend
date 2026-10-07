@@ -22,6 +22,7 @@ import CheerCrowd from "@/components/CheerCrowd";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
 import CluckyNest from "@/components/CluckyNest";
 import { preloadTapSounds, playTapSound, unloadTapSounds } from "@/utils/sounds";
+import { useLockGameZoom } from "@/hooks/useDisableZoomAndSelect";
 import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
@@ -165,7 +166,10 @@ export default function Tap2CrackGame() {
   const [activeCategory, setActiveCategory] = useState(0);
   const carouselScrollRef = useRef<ScrollView>(null);
 
-  // Load the tap "tick" sounds once when the game opens.
+  // No zooming while playing (some phones zoom in on rapid taps).
+  useLockGameZoom();
+
+  // Load the tap sounds once when the game opens.
   useEffect(() => {
     void preloadTapSounds();
     return () => unloadTapSounds();

@@ -235,7 +235,19 @@ export default function EggComponent({
       <View
         style={[
           styles.container,
-          IS_WEB ? ({ outlineStyle: 'none', outlineWidth: 0, WebkitTapHighlightColor: 'transparent', cursor: 'pointer' } as object) : null,
+          IS_WEB
+            ? ({
+                outlineStyle: 'none',
+                outlineWidth: 0,
+                WebkitTapHighlightColor: 'transparent',
+                cursor: 'pointer',
+                // the egg is a tap target: no double-tap zoom, no pinch, and quick taps with a
+                // slightly moving finger don't scroll the page
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+              } as object)
+            : null,
         ]}
       >
         <View style={[styles.eggContainer, { width: eggW, height: eggH }]}>

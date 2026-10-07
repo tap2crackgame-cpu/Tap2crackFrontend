@@ -30,6 +30,45 @@ function applyNativeNoSelectDefaults() {
 const VIEWPORT_CONTENT =
   "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
 
+/**
+ * Game screen (web): extra zoom protection while the game is open.
+ * - Re-applies the no-zoom viewport, which snaps a page that was already zoomed back to 100%.
+ * - Blocks double-click zoom and two-finger pinch that starts on the page.
+ * Taps with two fingers still count; only the zoom gesture is blocked.
+ */
+export function useLockGameZoom() {
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (meta) {
+      // toggling the content forces mobile browsers to re-evaluate and reset the zoom level
+      meta.setAttribute("content", VIEWPORT_CONTENT.replace("maximum-scale=1", "maximum-scale=1.0"));
+      requestAnimationFrame(() => meta.setAttribute("content", VIEWPORT_CONTENT));
+    }
+
+    const preventDblClick = (e: MouseEvent) => e.preventDefault();
+    const preventPinch = (e: TouchEvent) => {
+      if (e.touches.length > 1) e.preventDefault();
+    };
+    // Safari reports pinch as a scale on touchmove
+    const preventScaledMove = (e: TouchEvent) => {
+      const scale = (e as TouchEvent & { scale?: number }).scale;
+      if (typeof scale === "number" && scale !== 1) e.preventDefault();
+    };
+
+    document.addEventListener("dblclick", preventDblClick, { passive: false });
+    document.addEventListener("touchmove", preventPinch, { passive: false });
+    document.addEventListener("touchmove", preventScaledMove, { passive: false });
+
+    return () => {
+      document.removeEventListener("dblclick", preventDblClick);
+      document.removeEventListener("touchmove", preventPinch);
+      document.removeEventListener("touchmove", preventScaledMove);
+    };
+  }, []);
+}
+
 /** Web: block pinch/double-tap zoom and text selection outside inputs. */
 export function useDisableZoomAndSelect() {
   useEffect(() => {

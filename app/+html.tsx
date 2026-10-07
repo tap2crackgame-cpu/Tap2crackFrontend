@@ -87,6 +87,14 @@ export default function Root({ children }: { children: React.ReactNode }) {
                 user-select: none;
                 -webkit-touch-callout: none;
               }
+              /* touch-action doesn't reach inside scroll areas, so set it on every element:
+                 blocks double-tap zoom everywhere (rapid tapping on the egg) while keeping scrolling. */
+              #root * {
+                touch-action: manipulation;
+              }
+              #root input, #root textarea, #root [contenteditable="true"] {
+                touch-action: auto !important;
+              }
               input, textarea, [contenteditable="true"], [data-allow-select="true"] {
                 -webkit-user-select: text !important;
                 user-select: text !important;

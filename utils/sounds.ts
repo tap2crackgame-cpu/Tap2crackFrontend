@@ -20,7 +20,7 @@ export function isCrackSoundEnabled() {
 }
 
 /* ---------------- tap sound ----------------
- * A short, quiet eggshell "tick" (cut from the egg-crack recording) on every tap.
+ * A short, soft fingertip "knock" (like tapping a phone screen) on every tap.
  * Sounds are loaded once into a small pool and replayed, so tapping fast never lags.
  * Follows the same on/off switch as the crack sound.
  */
@@ -30,7 +30,7 @@ const TAP_SOURCES = [
   require("@/assets/sounds/egg-tap-3.mp3"),
 ];
 const TAP_COPIES_EACH = 2; // 6 players total -> overlapping taps don't cut each other off
-const TAP_VOLUME = 0.35; // quiet on purpose
+const TAP_VOLUME = 0.4; // soft fingertip knock, quiet on purpose
 const TAP_MIN_GAP_MS = 55;
 
 let tapPool: Audio.Sound[] = [];
