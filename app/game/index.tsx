@@ -383,7 +383,7 @@ export default function Tap2CrackGame() {
   // Size the egg so the header, egg and progress bar all fit on one phone screen.
   // Space reserved for: header (~56) + power-up strip (~34) + prize badge (~50) + egg label (~44)
   // + progress bar (~86) + breathing room. The strip is always reserved so the egg doesn't jump when a boost starts.
-  const reservedH = 56 + 34 + 50 + 44 + 86 + 24;
+  const reservedH = 56 + 34 + 50 + 44 + 30 + 86 + 24; // +30: boost-activity slot under the egg
   const eggH = Math.max(140, Math.min(isShort ? 210 : 235, height - reservedH));
   const eggW = Math.round(eggH * (180 / 220));
   // Non-normal eggs show an extra frequency badge under the egg name.
@@ -394,62 +394,34 @@ export default function Tap2CrackGame() {
   // Centre of the egg inside the egg stage (stage centres egg + label vertically).
   const eggCenterY = Math.round((stageHeight - eggH) / 2 - 10 + eggH * 0.5);
 
-  const laneStyles = useMemo(() => {
-    const sidePush = isPhone ? 6 : 18;
-    const k = stageHeight / 360; // lanes were designed for a 360px stage
-    const outLeft = -Math.max(22, Math.round(stageWidth * (isPhone ? 0.08 : 0.18))) - sidePush;
-    const outRight = outLeft;
-    const nearLeft = -Math.max(10, Math.round(stageWidth * (isPhone ? 0.04 : 0.12))) - sidePush;
-    const nearRight = nearLeft;
-
-    return [
-      { top: Math.round(20 * k), left: nearLeft },
-      { top: Math.round(80 * k), right: nearRight },
-      { top: Math.round(150 * k), left: outLeft },
-      { top: Math.round(210 * k), right: outRight },
-      { top: Math.round(270 * k), left: nearLeft },
-      { top: Math.round(310 * k), right: nearRight },
-    ] as const;
-  }, [isPhone, stageWidth, stageHeight]);
-
   const popupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // "Name activated 2x taps": ONE message at a time, in a fixed centred slot under the egg,
+  // so it's always fully on screen and never scattered around the egg.
   const [powerUpPopups, setPowerUpPopups] = useState<Array<{
     id: string;
-    text: string;
-    lane: number;
+    name: string;
+    mult: 2 | 3;
     anim: Animated.Value;
   }>>([]);
   const baseNames = useRef([...BOT_DISPLAY_NAMES]).current;
-  const bubbleVisibleRef = useRef(false);
-  bubbleVisibleRef.current = mobileBubbleVisible;
 
   const spawnPowerUpPopup = useCallback(() => {
     if (!popupsEligible) return;
 
     setPowerUpPopups(prev => {
-      const max = Math.max(0, Math.floor(onlineUsers));
-      if (prev.length >= max) return prev;
-
-      const activeLanes = new Set(prev.map(p => p.lane));
-      // Even lanes are on the left. Keep the right side clear while the 2x/3x bubble is there.
-      const lanes = bubbleVisibleRef.current ? [0, 2, 4] : [0, 1, 2, 3, 4, 5];
-      const free = lanes.filter(l => !activeLanes.has(l));
-      const lane = (free.length ? free : lanes)[Math.floor(Math.random() * (free.length ? free.length : lanes.length))];
+      if (prev.length >= 1 || onlineUsers < 2) return prev; // one at a time
 
       const name = baseNames[Math.floor(Math.random() * baseNames.length)];
-      const mult = Math.random() < 0.65 ? 2 : 3;
+      const mult: 2 | 3 = Math.random() < 0.65 ? 2 : 3;
       const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       const anim = new Animated.Value(0);
 
-      const next = [
-        ...prev,
-        { id, text: `${name} activated ${mult}x taps`, lane, anim },
-      ].slice(-max);
+      const next = [{ id, name, mult, anim }];
 
       Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 280, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 1, duration: 2500, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 280, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1, duration: 260, easing: Easing.out(Easing.back(1.4)), useNativeDriver: true }),
+        Animated.delay(2300),
+        Animated.timing(anim, { toValue: 0, duration: 260, useNativeDriver: true }),
       ]).start(() => {
         setPowerUpPopups(p => p.filter(x => x.id !== id));
       });
@@ -467,8 +439,6 @@ export default function Tap2CrackGame() {
       setPowerUpPopups([]);
       return;
     }
-
-    setPowerUpPopups(prev => prev.slice(-Math.max(0, Math.floor(onlineUsers))));
 
     if (!popupTimerRef.current) {
       const t = setTimeout(spawnPowerUpPopup, 500);
@@ -755,42 +725,6 @@ export default function Tap2CrackGame() {
             <>
               <Animated.View style={[styles.eggStage, { width: stageWidth, height: stageHeight, transform: [{ translateX: stageShake }] }]}>
                 <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown || waitingForEgg} size={chickenSize} avoidRight={mobileBubbleVisible} />
-                {powerUpPopups.length > 0 && (
-                  <View pointerEvents="none" style={styles.powerUpPopupsLayer}>
-                    {powerUpPopups.map(p => (
-                      <Animated.View
-                        key={p.id}
-                        style={[
-                          styles.powerUpPopup,
-                          isPhone && styles.powerUpPopupCompact,
-                          laneStyles[p.lane] ?? laneStyles[0],
-                          {
-                            opacity: p.anim,
-                            transform: [
-                              {
-                                translateY: p.anim.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [10, 0],
-                                }),
-                              },
-                              {
-                                scale: p.anim.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [0.98, 1],
-                                }),
-                              },
-                            ],
-                          },
-                        ]}
-                      >
-                      <Text numberOfLines={1} style={[styles.powerUpPopupText, isPhone && styles.powerUpPopupTextCompact]}>
-                        {p.text}
-                      </Text>
-                      </Animated.View>
-                    ))}
-                  </View>
-                )}
-
                 {/* 2x/3x offer bubble: sits in the empty space right of the egg and scrolls with it. */}
                 {showMobilePowerBubbleMount ? (
                   <Animated.View
@@ -888,6 +822,33 @@ export default function Tap2CrackGame() {
               </Animated.View>
             </>
           )}
+
+          {/* other players' boosts: fixed, centred slot (always fully visible) */}
+          <View style={styles.activitySlot} pointerEvents="none">
+            {powerUpPopups.map(p => (
+              <Animated.View
+                key={p.id}
+                style={[
+                  styles.activityToast,
+                  p.mult === 3 ? styles.activityToast3x : styles.activityToast2x,
+                  { maxWidth: stageWidth - 16 },
+                  {
+                    opacity: p.anim,
+                    transform: [
+                      { translateY: p.anim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+                      { scale: p.anim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+                    ],
+                  },
+                ]}
+              >
+                {p.mult === 3 ? <Crown size={isPhone ? 13 : 15} color="#D4A5FF" /> : <Zap size={isPhone ? 13 : 15} color="#4ECDC4" />}
+                <Text numberOfLines={1} ellipsizeMode="middle" style={[styles.activityText, isPhone && styles.activityTextSm]}>
+                  <Text style={styles.activityName}>{p.name}</Text> activated{" "}
+                  <Text style={{ color: p.mult === 3 ? "#D4A5FF" : "#4ECDC4", fontWeight: "900" }}>{p.mult}x</Text> taps
+                </Text>
+              </Animated.View>
+            ))}
+          </View>
 
           <View style={[styles.progressWrap, { paddingHorizontal: padH }]}>
   <ProgressBar 
@@ -1366,54 +1327,41 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     overflow: "visible",
   },
-  powerUpPopupsLayer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 5,
-  },
-  eggTopLayer: {
-    zIndex: 2,
-  },
-  eggHidden: {
-    opacity: 0,
-  },
-  nestLayer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 3,
+  activitySlot: {
+    height: 30,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 2,
   },
-  powerUpPopup: {
-    position: "absolute",
-    maxWidth: 190,
+  activityToast: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.28)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-  },
-  powerUpPopupCompact: {
-    maxWidth: 148,
-    paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.22)",
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  powerUpPopupText: {
+  activityToast2x: {
+    backgroundColor: "rgba(78,205,196,0.14)",
+    borderColor: "rgba(78,205,196,0.35)",
+  },
+  activityToast3x: {
+    backgroundColor: "rgba(155,89,182,0.18)",
+    borderColor: "rgba(155,89,182,0.45)",
+  },
+  activityText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: "rgba(255,255,255,0.88)",
+    flexShrink: 1,
+  },
+  activityTextSm: {
     fontSize: 12,
-    fontWeight: "800" as const,
-    color: "rgba(255,255,255,0.92)",
-    textShadowColor: "rgba(0,0,0,0.35)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
-  powerUpPopupTextCompact: {
-    fontSize: 10,
-    fontWeight: "700" as const,
+  activityName: {
+    fontWeight: "800" as const,
+    color: "#FFFFFF",
   },
   carouselContainer: {
     marginTop: 24,
