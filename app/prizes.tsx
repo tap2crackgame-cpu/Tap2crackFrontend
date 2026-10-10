@@ -125,8 +125,12 @@ export default function PrizesPage() {
                   <Text style={styles.value}>₦{(w.prize_value || 0).toLocaleString()}</Text>
                 </View>
                 <View style={styles.codeBox}>
-                  <Text style={styles.codeLabel}>{w.prize_code ? "Code" : "Details"}</Text>
-                  <Text style={styles.codeText}>{w.prize_code || w.prize_description}</Text>
+                  <Text style={styles.codeLabel}>
+                    {w.prize_code ? "Coupon code" : w.prize_type === "coupon" ? "Coupon code" : "Details"}
+                  </Text>
+                  <Text style={styles.codeText} selectable>
+                    {w.prize_code || (w.prize_type === "coupon" ? "No code" : w.prize_description)}
+                  </Text>
                   <Text style={styles.copyHint}>
                     {copiedId === w.id ? "Copied" : "Tap to copy"}
                   </Text>

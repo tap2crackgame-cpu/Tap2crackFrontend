@@ -265,8 +265,17 @@ export function normalizeWinner(raw: Record<string, unknown> | null | undefined)
       w.prize_description ?? w.prizeDescription ?? "Prize"
     ),
     prize_value: Number(w.prize_value ?? w.prizeValue ?? 0),
-    prize_code: (w.prize_code as string | null) ?? (w.couponCode as string | null) ?? null,
-    company_name: (w.company_name as string | null) ?? null,
+    prize_code:
+      (w.prize_code as string | null) ??
+      (w.prizeCode as string | null) ??
+      (w.coupon_code as string | null) ??
+      (typeof w.couponCode === "string" ? (w.couponCode as string) : null) ??
+      ((w.coupon as { code?: string } | undefined)?.code ?? null) ??
+      ((w.price as { code?: string } | undefined)?.code ?? null),
+    company_name:
+      (w.company_name as string | null) ??
+      (w.companyName as string | null) ??
+      ((w.coupon as { name?: string } | undefined)?.name ?? null),
     won_at: wonAtStr,
     screenshot_url: (w.screenshot_url as string | null) ?? null,
   };

@@ -21,7 +21,7 @@ import PowerUpBackground, { PowerUpActiveStrip } from "@/components/PowerUpBackg
 import CheerCrowd from "@/components/CheerCrowd";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
 import CluckyNest from "@/components/CluckyNest";
-import { preloadTapSounds, playTapSound, unloadTapSounds } from "@/utils/sounds";
+import { preloadTapSounds, playTapSound, unloadTapSounds, playGameSound } from "@/utils/sounds";
 import { useLockGameZoom } from "@/hooks/useDisableZoomAndSelect";
 import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
@@ -297,6 +297,7 @@ export default function Tap2CrackGame() {
   useEffect(() => {
     if (roundEnded && !prevRoundEndedRef.current) {
       setBurstHold(true);
+      if (!testMode) void playGameSound("eggBurst");
       burstFlash.setValue(0.9);
       Animated.timing(burstFlash, { toValue: 0, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
       stageShake.setValue(0);
@@ -314,7 +315,7 @@ export default function Tap2CrackGame() {
     }
     if (!roundEnded) setBurstHold(false);
     prevRoundEndedRef.current = roundEnded;
-  }, [roundEnded, burstFlash, stageShake]);
+  }, [roundEnded, burstFlash, stageShake, testMode]);
 
   // ---- Between rounds: Clucky lays the next egg ----
   // After the countdown, the old (broken) egg can hang around for a few seconds until the server
@@ -334,11 +335,11 @@ export default function Tap2CrackGame() {
     const t = setTimeout(() => setCooldownPassed(true), left);
     return () => clearTimeout(t);
   }, [cooldownEndMs]);
-  // Clucky must wait until this round's result has actually come in (win/lose modal or the
-  // cooldown). Until then the cracked egg + yolk just stays on screen. The result arrives from
-  // the server a moment after the burst, so without this Clucky could pop up on top of the yolk.
+  // Clucky must wait until this round's win/lose modal has actually been SHOWN (then closed).
+  // While the server is still deciding the winner, ONLY the cracked egg + yolk stays on screen —
+  // no Clucky, no nest. (The cooldown flag alone isn't enough: it can arrive before the result.)
   const [roundResultSeen, setRoundResultSeen] = useState(false);
-  const resultShowing = showWinModal || loseModalVisible || !!currentEgg?.isCooldown;
+  const resultShowing = (showWinModal || loseModalVisible) && !burstHold;
   useEffect(() => {
     if (!eggBroken) {
       setRoundResultSeen(false);
@@ -349,7 +350,7 @@ export default function Tap2CrackGame() {
       return;
     }
     // safety net: if no result ever arrives (e.g. a dropped message), don't leave the yolk forever
-    const t = setTimeout(() => setRoundResultSeen(true), 8000);
+    const t = setTimeout(() => setRoundResultSeen(true), 15000);
     return () => clearTimeout(t);
   }, [eggBroken, resultShowing]);
 
@@ -363,6 +364,7 @@ export default function Tap2CrackGame() {
     // Clucky was waiting and a fresh egg has arrived -> lay it.
     if (prevWaitingRef.current && !waitingForEgg && !eggBroken) {
       setLayingEgg(true);
+      void playGameSound("cluckyLay");
       layAnim.setValue(0);
       Animated.spring(layAnim, { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }).start();
       const t = setTimeout(() => setLayingEgg(false), LAY_MS);
@@ -371,6 +373,22 @@ export default function Tap2CrackGame() {
     }
     prevWaitingRef.current = waitingForEgg;
   }, [waitingForEgg, eggBroken, layAnim]);
+
+  // ---- result + boost sounds ----
+  // Lose: soft "bwomp" + sad clucks when the lose modal appears (after the burst).
+  const loseShownRef = useRef(false);
+  useEffect(() => {
+    const showing = loseModalVisible && !burstHold;
+    if (showing && !loseShownRef.current) void playGameSound("loseCluck");
+    loseShownRef.current = showing;
+  }, [loseModalVisible, burstHold]);
+  // 2x / 3x boost activated.
+  const boostOnRef = useRef(!!activePowerUp);
+  useEffect(() => {
+    const on = !!activePowerUp;
+    if (on && !boostOnRef.current) void playGameSound("boost");
+    boostOnRef.current = on;
+  }, [activePowerUp]);
 
   // ---- "ABOUT TO CRACK!" banner (85%+) ----
   const aboutToCrack = !!currentEgg && progressPct >= 85 && progressPct < 100 && !currentEgg.isCooldown;
@@ -743,7 +761,7 @@ export default function Tap2CrackGame() {
           {currentEgg && (
             <>
               <Animated.View style={[styles.eggStage, { width: stageWidth, height: stageHeight, transform: [{ translateX: stageShake }] }]}>
-                <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown || waitingForEgg} size={chickenSize} avoidRight={mobileBubbleVisible} />
+                <CheerCrowd taps={tapCount} progress={progressPct} hidden={!!currentEgg.isCooldown || waitingForEgg || eggBroken} size={chickenSize} avoidRight={mobileBubbleVisible} />
                 {/* 2x/3x offer bubble: sits in the empty space right of the egg and scrolls with it. */}
                 {showMobilePowerBubbleMount ? (
                   <Animated.View
@@ -1340,6 +1358,19 @@ const styles = StyleSheet.create({
   prizeIndicatorCompact: {
     marginBottom: 0,
   },
+  // Clucky's nest sits on top of the egg spot between rounds.
+  nestLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 4,
+  },
+  eggTopLayer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // While Clucky waits on the nest, the old cracked egg + yolk is fully hidden (Clucky only).
+  eggHidden: { opacity: 0 },
   eggStage: {
     alignSelf: "center",
     position: "relative",

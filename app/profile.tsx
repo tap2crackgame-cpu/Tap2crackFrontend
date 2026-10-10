@@ -193,7 +193,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
           <View style={styles.section}>
             <View style={styles.soundRow}>
               <Volume2 size={16} color="#FFD700" />
-              <Text style={styles.soundRowLabel}>Crack sound</Text>
+              <Text style={styles.soundRowLabel}>Game sounds</Text>
               <Switch
                 style={styles.soundSwitch}
                 value={crackSoundEnabled}
@@ -271,9 +271,14 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
                           </View>
                           {w.company_name ? <Text style={styles.prizeCompany}>{w.company_name}</Text> : null}
                           {w.prize_code ? (
-                            <Text style={styles.prizeCode} numberOfLines={2}>
-                              Code: {w.prize_code}
-                            </Text>
+                            <View style={styles.prizeCodeBox}>
+                              <Text style={styles.prizeCodeLabel}>COUPON CODE</Text>
+                              <Text style={styles.prizeCode} numberOfLines={2} selectable>
+                                {w.prize_code}
+                              </Text>
+                            </View>
+                          ) : w.prize_type === "coupon" ? (
+                            <Text style={styles.prizeCodePending}>No code</Text>
                           ) : null}
                         </View>
                       );})}
@@ -631,7 +636,10 @@ const styles = StyleSheet.create({
   prizeEggType: { fontSize: 12, color: "rgba(255,215,0,0.85)", textTransform: "capitalize" },
   prizeValue: { fontSize: 13, fontWeight: "700" as const, color: "#4ECDC4" },
   prizeCompany: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 6 },
-  prizeCode: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 8, fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" }) },
+  prizeCodeBox: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderStyle: "dashed", borderColor: "rgba(255,215,0,0.55)", backgroundColor: "rgba(255,215,0,0.08)" },
+  prizeCodeLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5, color: "rgba(255,215,0,0.85)" },
+  prizeCodePending: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 8 },
+  prizeCode: { fontSize: 15, fontWeight: "800", color: "#FFF", marginTop: 2, fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" }) },
   modalFooterBtn: {
     flexDirection: "row",
     alignItems: "center",

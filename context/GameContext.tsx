@@ -466,10 +466,10 @@ const handleEggCracked = useCallback((data: {
   setTimeout(() => void loadWinnersFromApi(), 3000);
 
   if (isMe) {
-    if (winner.prize_type === 'coupon') {
-      void playGameSound('couponWin');
-    } else if (winner.prize_type === 'airtime' || winner.prize_type === 'cash') {
-      void playGameSound('airtimeWin');
+    // Clucky celebrates after the burst sound has landed; cash/airtime adds the money "ka-ching".
+    setTimeout(() => void playGameSound('winCluck'), 1100);
+    if (winner.prize_type === 'airtime' || winner.prize_type === 'cash') {
+      setTimeout(() => void playGameSound('airtimeWin'), 1900);
     }
 
     setAuthUser((prev) => {

@@ -1,11 +1,44 @@
 import { Audio } from "expo-av";
 
+/*
+ * Game sound set (same family as the Clucky videos — all royalty-free, made for Tap2Crack):
+ *  - eggCrack    short shell crackle as the egg cracks up (a few progress milestones)
+ *  - eggBurst    the big crack + boom + flying shell when the egg bursts
+ *  - winCluck    happy bells + Clucky's "bok bok bok BAGAWK" when YOU win
+ *  - loseCluck   soft "bwomp" + two little sad clucks when someone else won
+ *  - boost       2x / 3x power-up activated
+ *  - cluckyLay   Clucky's cluck + pop when he lays the next egg
+ *  - airtimeWin / paymentSuccess   cash sounds (kept)
+ * Removed: the sitcom crowd "ooh" (felt off) and the long raw crack sample on every milestone.
+ */
 const SOUND_SOURCES = {
-  couponWin: require("@/assets/sounds/sitcom-crowd-ooh_sRDaL7d.mp3"),
+  eggCrack: require("@/assets/sounds/shell-crack.mp3"),
+  eggBurst: require("@/assets/sounds/egg-burst.mp3"),
+  winCluck: require("@/assets/sounds/win-cluck.mp3"),
+  couponWin: require("@/assets/sounds/win-cluck.mp3"),
+  loseCluck: require("@/assets/sounds/lose-cluck.mp3"),
+  boost: require("@/assets/sounds/boost.mp3"),
+  cluckyLay: require("@/assets/sounds/clucky-lay.mp3"),
   paymentSuccess: require("@/assets/sounds/money-soundfx.mp3"),
   airtimeWin: require("@/assets/sounds/money-button.mp3"),
-  eggCrack: require("@/assets/sounds/short-egg-cracking-soundbible.mp3"),
 } as const;
+
+/** Volume per sound so nothing is too loud next to the soft tap knock. */
+const SOUND_VOLUME: Partial<Record<keyof typeof SOUND_SOURCES, number>> = {
+  eggCrack: 0.55,
+  eggBurst: 0.85,
+  winCluck: 0.9,
+  couponWin: 0.9,
+  loseCluck: 0.6,
+  boost: 0.75,
+  cluckyLay: 0.7,
+  airtimeWin: 0.8,
+};
+
+/** These follow the "Game sounds" switch in the profile. Payment confirmation always plays. */
+const SWITCHABLE: ReadonlySet<string> = new Set([
+  "eggCrack", "eggBurst", "winCluck", "couponWin", "loseCluck", "boost", "cluckyLay", "airtimeWin",
+]);
 
 export type GameSoundKey = keyof typeof SOUND_SOURCES;
 
@@ -84,9 +117,7 @@ export function playTapSound() {
 }
 
 /** Progress thresholds where crack sfx plays (never at 100% burst). */
-export const CRACK_SOUND_MILESTONES = [
-  25, 30, 45, 60, 65, 70, 75, 80, 85, 90, 95,
-] as const;
+export const CRACK_SOUND_MILESTONES = [30, 50, 70, 85, 95] as const;
 
 let audioModeReady = false;
 
@@ -105,12 +136,12 @@ async function ensureAudioMode() {
 }
 
 export async function playGameSound(key: GameSoundKey) {
-  if (key === "eggCrack" && !crackSoundEnabled) return;
+  if (SWITCHABLE.has(key) && !crackSoundEnabled) return;
   try {
     await ensureAudioMode();
     const { sound } = await Audio.Sound.createAsync(SOUND_SOURCES[key], {
       shouldPlay: true,
-      volume: 1,
+      volume: SOUND_VOLUME[key] ?? 1,
     });
     sound.setOnPlaybackStatusUpdate((status) => {
       if (status.isLoaded && status.didJustFinish) {
