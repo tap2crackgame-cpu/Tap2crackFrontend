@@ -21,6 +21,12 @@ import PowerUpBackground, { PowerUpActiveStrip } from "@/components/PowerUpBackg
 import CheerCrowd from "@/components/CheerCrowd";
 import EggPunLoadingOverlay from "@/components/EggPunLoadingOverlay";
 import CluckyNest from "@/components/CluckyNest";
+import CluckyBuddy from "@/components/CluckyBuddy";
+import WinnerTicker from "@/components/WinnerTicker";
+import {
+  getLevel, getXp, loadOutfit, getOutfitSync, onOutfitChange, effectiveOutfit,
+  recordRoundPlayed, recordBoostUsed, recordBigRound, type OutfitId,
+} from "@/utils/progression";
 import { preloadTapSounds, playTapSound, unloadTapSounds, playGameSound } from "@/utils/sounds";
 import { useLockGameZoom } from "@/hooks/useDisableZoomAndSelect";
 import { BOT_DISPLAY_NAMES } from "@/constants/botDisplayNames";
@@ -195,6 +201,15 @@ export default function Tap2CrackGame() {
     setTestIsLoser(false);
     setTestCrackLevel(0);
   }, [setShowLoseModal]);
+
+  // ---- your share of this egg's cracks (frontend only) ----
+  const myCracksRef = useRef(0);
+  const roundCountedRef = useRef<string | null>(null);
+  const bigRoundRef = useRef(false);
+  useEffect(() => {
+    myCracksRef.current = 0;
+    bigRoundRef.current = false;
+  }, [currentEgg?.egg.id, currentEgg?.roundId]);
 
   useEffect(() => {
     tapCountRef.current = 0;
@@ -386,7 +401,10 @@ export default function Tap2CrackGame() {
   const boostOnRef = useRef(!!activePowerUp);
   useEffect(() => {
     const on = !!activePowerUp;
-    if (on && !boostOnRef.current) void playGameSound("boost");
+    if (on && !boostOnRef.current) {
+      void playGameSound("boost");
+      void recordBoostUsed();
+    }
     boostOnRef.current = on;
   }, [activePowerUp]);
 
@@ -428,6 +446,29 @@ export default function Tap2CrackGame() {
   const stageHeight = eggH + (isShort ? 48 : 64) + (eggHasBadge ? 26 : 0);
   const chickenSize = isPhone ? 44 : 56;
   const bubbleSize = width < 360 ? 52 : 60;
+
+  // ---- Clucky buddy beside the egg (reacts to the round + tips) ----
+  const [savedOutfit, setSavedOutfit] = useState<OutfitId>(getOutfitSync());
+  useEffect(() => {
+    void loadOutfit().then(setSavedOutfit);
+    return onOutfitChange(setSavedOutfit);
+  }, []);
+  const playerLevel = getLevel(getXp(user?.stats)).current.level;
+  const buddyOutfit = effectiveOutfit(savedOutfit, playerLevel);
+  const eggGutter = (stageWidth - eggW) / 2;
+  const buddySize = Math.round(Math.max(0, Math.min(96, eggGutter - 6)));
+  const showBuddy = buddySize >= 54;
+
+  // your % of this egg's cracks (updates with the tap UI)
+  const eggTotalCracks = Number(currentEgg?.currentTaps ?? 0);
+  const myShare = eggTotalCracks > 0 ? Math.min(100, (myCracksRef.current / eggTotalCracks) * 100) : 0;
+  const myShareShown = tapCount > 0 && myCracksRef.current > 0;
+  useEffect(() => {
+    if (myShareShown && myShare >= 20 && eggTotalCracks >= 50 && !bigRoundRef.current) {
+      bigRoundRef.current = true;
+      void recordBigRound();
+    }
+  }, [myShare, myShareShown, eggTotalCracks]);
   // Centre of the egg inside the egg stage (stage centres egg + label vertically).
   const eggCenterY = Math.round((stageHeight - eggH) / 2 - 10 + eggH * 0.5);
 
@@ -510,6 +551,12 @@ export default function Tap2CrackGame() {
 
     playTapSound();
     tapCountRef.current += 1;
+    myCracksRef.current += activePowerUp?.multiplier || (currentEgg?.isHappyHour ? 2 : 1);
+    const rid = currentEgg?.roundId ? String(currentEgg.roundId) : "";
+    if (rid && roundCountedRef.current !== rid) {
+      roundCountedRef.current = rid;
+      void recordRoundPlayed(rid);
+    }
     consecutiveRef.current += 1;
     const n = tapCountRef.current;
 
@@ -533,7 +580,7 @@ export default function Tap2CrackGame() {
     if (!testMode) {
       handleTap();
     }
-  }, [handleTap, triggerFlash, testMode, currentEgg?.isCooldown, scheduleTapUi]);
+  }, [handleTap, triggerFlash, testMode, currentEgg?.isCooldown, currentEgg?.roundId, currentEgg?.isHappyHour, activePowerUp, scheduleTapUi]);
 
   // Get background gradient based on egg type
   const getBackgroundGradient = (): [string, string, string] => {
@@ -723,6 +770,7 @@ export default function Tap2CrackGame() {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.gameMainColumn, { maxWidth: contentMax, width: isWideWeb ? contentMax : "100%" }]}>
+          {!aboutToCrack && winners.length > 0 && <WinnerTicker winners={winners} compact={isPhone} />}
           {aboutToCrack && (
             <View style={styles.crackBannerWrap} pointerEvents="none">
               <Animated.Text
@@ -734,7 +782,7 @@ export default function Tap2CrackGame() {
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                ABOUT TO CRACK!
+                {progressPct >= 95 ? "ANYONE'S EGG NOW! 😱" : "ABOUT TO CRACK!"}
               </Animated.Text>
             </View>
           )}
@@ -814,6 +862,18 @@ export default function Tap2CrackGame() {
                     </TouchableOpacity>
                   </Animated.View>
                 ) : null}
+
+                {showBuddy && !eggBroken && !waitingForEgg && !layingEgg && !testMode && (
+                  <View style={[styles.buddyLayer, { top: Math.max(0, Math.round(eggCenterY - eggH / 2) - 4) }]} pointerEvents="none">
+                    <CluckyBuddy
+                      size={buddySize}
+                      progress={progressPct}
+                      boosted={!!activePowerUp}
+                      share={myShare}
+                      outfit={buddyOutfit}
+                    />
+                  </View>
+                )}
 
                 {(waitingForEgg || layingEgg) && (
                   <View style={styles.nestLayer} pointerEvents="none">
@@ -898,6 +958,11 @@ export default function Tap2CrackGame() {
     <Text style={styles.progressText}>
       {Math.round(progressPct)}% cracked
       {onlineUsers > 1 && otherPlayersTaps > 0 && ` · ${otherPlayersTaps} taps from others`}
+    </Text>
+  )}
+  {myShareShown && !waitingForEgg && !eggBroken && (
+    <Text style={[styles.myShareText, myShare >= 20 && styles.myShareTextHot]}>
+      💪 Your cracks: {myCracksRef.current.toLocaleString()} · {myShare < 1 ? "<1" : Math.round(myShare)}% of this egg
     </Text>
   )}
 </View>
@@ -1358,6 +1423,9 @@ const styles = StyleSheet.create({
   prizeIndicatorCompact: {
     marginBottom: 0,
   },
+  buddyLayer: { position: "absolute", left: 2, zIndex: 3 },
+  myShareText: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "700", textAlign: "center", marginTop: 4 },
+  myShareTextHot: { color: "#7CF0A9" },
   // Clucky's nest sits on top of the egg spot between rounds.
   nestLayer: {
     ...StyleSheet.absoluteFillObject,

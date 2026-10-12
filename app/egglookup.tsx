@@ -26,6 +26,7 @@ import { getAuthApi } from "@/utils/api";
 import { showAlertAsToast } from "@/context/ToastContext";
 import CouponAdminPanel from "@/components/admin/CouponAdminPanel";
 import PhoneSearchBar from "@/components/admin/PhoneSearchBar";
+import { notifyWinnerEmail, isAutoEmailConfigured } from "@/utils/notifyWinnerEmail";
 
 type Tab = 'overview' | 'users' | 'winners' | 'payments' | 'Coupons' | 'prizes' | 'ads';
 type PrizeSettleFilter = 'all' | 'unsettled' | 'settled';
@@ -280,6 +281,29 @@ const filteredPrizes = useMemo(() => {
 }, [prizeData, prizePhoneSearch, prizeSettleFilter]);
 
 
+const prizeEmail = (p: Price): string => {
+  const anyP = p as Price & { user_email?: string | null; user?: { email?: string | null } };
+  return String(anyP.user?.email || anyP.user_email || '').trim();
+};
+
+const emailWinner = async (p: Price) => {
+  const email = prizeEmail(p);
+  if (!email) {
+    showAlertAsToast('No email', 'This winner has no email on their account.');
+    return;
+  }
+  const r = await notifyWinnerEmail({
+    email,
+    name: p.user?.name,
+    prizeName: p.priceName,
+    prizeType: p.priceType,
+    prizeValue: p.priceValue,
+  });
+  if (r === 'sent') showAlertAsToast('Email sent', `${email} has been told their prize is released ✉️`);
+  else if (r === 'opened') showAlertAsToast('Email ready', 'Your email app opened with the message — press Send.');
+  else showAlertAsToast('Email failed', `Could not send to ${email}.`);
+};
+
 const handleFulfillPrize = (prizeId: string) => {
   Alert.alert(
     'Confirm Payout',
@@ -313,6 +337,8 @@ const handleFulfillPrize = (prizeId: string) => {
                 await queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
                 await queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
                 showAlertAsToast('Success', 'Prize marked as settled!');
+                const settledPrize = prizeData.find((x) => x.id === prizeId);
+                if (settledPrize && prizeEmail(settledPrize)) void emailWinner(settledPrize);
               } else {
                 showAlertAsToast('Failed', result.error || `Could not fulfill prize (${response.status}).`);
               }
@@ -1125,6 +1151,7 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
     <View style={{ flex: 1 }}>
       <Text style={styles.winnerName}>{p.user?.name || 'User'}</Text>
       <Text style={styles.userPhone}>{hasPhone ? userPhone : 'No phone'}</Text>
+      {!!prizeEmail(p) && <Text style={styles.userPhone}>{prizeEmail(p)}</Text>}
     </View>
     <View style={{ alignItems: 'flex-end', gap: 6 }}>
       <View style={[styles.typeBadge, { backgroundColor: isCash ? 'rgba(255, 215, 0, 0.15)' : 'rgba(78, 205, 196, 0.2)' }]}>
@@ -1174,6 +1201,13 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
           </Text>
         )}
       </TouchableOpacity>
+      {isSettled && !!prizeEmail(p) && (
+        <TouchableOpacity onPress={() => void emailWinner(p)} style={{ marginTop: 6 }} accessibilityLabel="Email winner again">
+          <Text style={{ color: '#4ECDC4', fontSize: 11, fontWeight: '700' }}>
+            ✉️ {isAutoEmailConfigured() ? 'Resend email' : 'Email winner'}
+          </Text>
+        </TouchableOpacity>
+      )}
       <Text style={styles.winnerAt}>{formatDate(p.createdAt)}</Text>
     </View>
   </View>

@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import html2canvas from "html2canvas";
+import { shareWin } from "@/utils/shareWinCard";
 import { LinearGradient } from "expo-linear-gradient";
 import { CluckyCheer, EmojiRain } from "./CluckyReactions";
 
@@ -70,26 +70,16 @@ export default function WinModal({ visible, winner, onClose }: WinModalProps) {
     }
   }, [visible, scaleAnim]);
 
-  const handleScreenshot = async () => {
-    if (Platform.OS !== "web" || !captureRef.current) return;
-
-    try {
-      const canvas = await html2canvas(captureRef.current);
-      const image = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.href = image;
-      link.download = "tap2crack-win.png";
-      link.click();
-
-      if (navigator.share) {
-        await navigator.share({
-          title: "Tap2Crack Win 🎉",
-          text: `I just won ${winner.prize_description}!`,
-        });
-      }
-    } catch (err) {
-      console.log("SCREENSHOT ERROR:", err);
-    }
+  const handleShare = () => {
+    if (!winner) return;
+    const prizeLabel =
+      winner.prize_type === "coupon"
+        ? [winner.company_name, winner.prize_description].filter(Boolean).join(" · ") || "a coupon"
+        : winner.prize_description || "a prize";
+    const eggLabel =
+      winner.egg_type === "golden" ? "Golden Egg" : winner.egg_type === "silver" ? "Silver Egg"
+        : winner.egg_type === "company" ? "Company Egg" : winner.egg_type === "business" ? "Business Egg" : "";
+    void shareWin({ prizeLabel, eggLabel, playerName: winner.user_name || null });
   };
 
   if (!winner) return null;
@@ -145,14 +135,9 @@ export default function WinModal({ visible, winner, onClose }: WinModalProps) {
             <View>{modalBody}</View>
           )}
 
-          {Platform.OS === "web" ? (
-            <TouchableOpacity
-              style={styles.shareButton}
-              onPress={handleScreenshot}
-            >
-              <Text style={styles.shareText}>📸 Save / Share</Text>
-            </TouchableOpacity>
-          ) : null}
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare} accessibilityLabel="Share my win">
+            <Text style={styles.shareText}>📣 Share my win</Text>
+          </TouchableOpacity>
         </Animated.View>
       </View>
     </Modal>

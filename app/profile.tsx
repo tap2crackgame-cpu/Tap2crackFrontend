@@ -14,6 +14,7 @@ import { useUserPrizes } from "./usePrizes";
 import { type DbWinner, getUserSettlementLabel, isPrizeSettled, formatCouponExpiry } from "@/types/game";
 import { getAuthApi } from "@/utils/api";
 import { resolveUserStats, formatStat } from "@/utils/userStats";
+import TapperProgress from "@/components/TapperProgress";
 import { useGoogleAuth } from "@/hooks/googleLogin";
 import { useResponsive } from "@/hooks/useResponsive";
 
@@ -406,6 +407,10 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
               </View>
             </View>
           </Modal>
+
+          <View style={styles.section}>
+            <TapperProgress stats={stats} isGuest={!!user.isGuest} />
+          </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Total Taps</Text>
