@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUserPrizes } from "@/services/userPrizes";
 import type { DbWinner } from "@/types/game";
-import { getUserSettlementLabel, isPrizeSettled } from "@/types/game";
+import { getUserSettlementLabel, isPrizeSettled, formatCouponExpiry } from "@/types/game";
 import { useResponsive } from "@/hooks/useResponsive";
 
 export default function PrizesPage() {
@@ -126,11 +126,17 @@ export default function PrizesPage() {
                 </View>
                 <View style={styles.codeBox}>
                   <Text style={styles.codeLabel}>
-                    {w.prize_code ? "Coupon code" : w.prize_type === "coupon" ? "Coupon code" : "Details"}
+                    {w.prize_code || w.prize_type === "coupon" ? "Code" : "Details"}
                   </Text>
                   <Text style={styles.codeText} selectable>
                     {w.prize_code || (w.prize_type === "coupon" ? "No code" : w.prize_description)}
                   </Text>
+                  {(() => {
+                    const exp = w.prize_type === "coupon" ? formatCouponExpiry(w.expires_at) : null;
+                    return exp ? (
+                      <Text style={[styles.expiryText, exp.expired && styles.expiryTextExpired]}>{exp.text}</Text>
+                    ) : null;
+                  })()}
                   <Text style={styles.copyHint}>
                     {copiedId === w.id ? "Copied" : "Tap to copy"}
                   </Text>
@@ -200,6 +206,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
+  expiryText: { color: "#7CF0A9", fontSize: 11, fontWeight: "700" as const, marginTop: 6 },
+  expiryTextExpired: { color: "#FF8A8A" },
   codeLabel: { color: "rgba(255,255,255,0.55)", fontSize: 10, marginBottom: 6 },
   codeText: { color: "#FFF", fontSize: 14, fontWeight: "800" as const },
   copyHint: { color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 8 },

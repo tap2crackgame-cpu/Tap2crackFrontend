@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import  userUserProfile  from "@/app/useProfile";
 import { useUserPrizes } from "./usePrizes";
-import { type DbWinner, getUserSettlementLabel, isPrizeSettled } from "@/types/game";
+import { type DbWinner, getUserSettlementLabel, isPrizeSettled, formatCouponExpiry } from "@/types/game";
 import { getAuthApi } from "@/utils/api";
 import { resolveUserStats, formatStat } from "@/utils/userStats";
 import { useGoogleAuth } from "@/hooks/googleLogin";
@@ -272,7 +272,7 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
                           {w.company_name ? <Text style={styles.prizeCompany}>{w.company_name}</Text> : null}
                           {w.prize_code ? (
                             <View style={styles.prizeCodeBox}>
-                              <Text style={styles.prizeCodeLabel}>COUPON CODE</Text>
+                              <Text style={styles.prizeCodeLabel}>CODE</Text>
                               <Text style={styles.prizeCode} numberOfLines={2} selectable>
                                 {w.prize_code}
                               </Text>
@@ -280,6 +280,12 @@ const [phoneSubmitting, setPhoneSubmitting] = useState(false);
                           ) : w.prize_type === "coupon" ? (
                             <Text style={styles.prizeCodePending}>No code</Text>
                           ) : null}
+                          {(() => {
+                            const exp = w.prize_type === "coupon" ? formatCouponExpiry(w.expires_at) : null;
+                            return exp ? (
+                              <Text style={[styles.prizeExpiry, exp.expired && styles.prizeExpiryExpired]}>{exp.text}</Text>
+                            ) : null;
+                          })()}
                         </View>
                       );})}
                     </ScrollView>
@@ -636,6 +642,8 @@ const styles = StyleSheet.create({
   prizeEggType: { fontSize: 12, color: "rgba(255,215,0,0.85)", textTransform: "capitalize" },
   prizeValue: { fontSize: 13, fontWeight: "700" as const, color: "#4ECDC4" },
   prizeCompany: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 6 },
+  prizeExpiry: { fontSize: 11, fontWeight: "700", color: "#7CF0A9", marginTop: 6 },
+  prizeExpiryExpired: { color: "#FF8A8A" },
   prizeCodeBox: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderStyle: "dashed", borderColor: "rgba(255,215,0,0.55)", backgroundColor: "rgba(255,215,0,0.08)" },
   prizeCodeLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5, color: "rgba(255,215,0,0.85)" },
   prizeCodePending: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 8 },

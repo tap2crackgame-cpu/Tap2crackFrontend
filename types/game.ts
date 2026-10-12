@@ -131,10 +131,22 @@ export  type DbWinner = {
   prize_type?: string;
   egg_type: string;
   company_name?: string | null;
+  /** Coupon expiry (ISO date), when the coupon has one. */
+  expires_at?: string | null;
   won_at: string;
   settlement_status?: 'PENDING' | 'CLAIMED';
   price_id?: string | null;
 };
+
+/** "Expires 30 Nov 2026" / "Expired 2 Oct 2026", or null when there is no valid expiry. */
+export function formatCouponExpiry(iso?: string | null): { text: string; expired: boolean } | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const expired = d.getTime() < Date.now();
+  const day = d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return { text: `${expired ? "Expired" : "Expires"} ${day}`, expired };
+}
 
 export function isPrizeSettled(status?: string | null): boolean {
   return String(status ?? 'PENDING').toUpperCase() === 'CLAIMED';

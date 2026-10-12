@@ -35,6 +35,10 @@ export function normalizeUserPrize(r: Raw): DbWinner {
       r.code, couponObj.code, couponObj.couponCode, priceObj.code, priceObj.couponCode, priceObj.coupon?.code
     ),
     company_name: pick(r.company_name, r.companyName, couponObj.company_name, couponObj.companyName, couponObj.name, priceObj.company_name, priceObj.companyName),
+    expires_at: pick(
+      r.expires_at, r.expiresAt, r.coupon_expires_at, r.couponExpiresAt,
+      couponObj.expires_at, couponObj.expiresAt, couponObj.expiry, priceObj.expires_at, priceObj.expiresAt
+    ),
     egg_type: String(r.egg_type ?? r.eggType ?? r.egg?.eggType ?? "normal"),
     won_at: String(r.won_at ?? r.wonAt ?? r.createdAt ?? new Date().toISOString()),
     settlement_status: (r.settlement_status ?? r.settlementStatus ?? "PENDING") as DbWinner["settlement_status"],
