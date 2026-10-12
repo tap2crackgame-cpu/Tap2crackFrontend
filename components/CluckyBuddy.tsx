@@ -254,7 +254,7 @@ function CluckyBuddy({
             { opacity: bubble, transform: [{ scale: bubble.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] },
           ]}
         >
-          <Text style={[styles.bubbleText, size < 72 && styles.bubbleTextSm]} numberOfLines={2}>
+          <Text style={[styles.bubbleText, size < 72 && styles.bubbleTextSm]}>
             {tip}
           </Text>
           <View style={styles.tail} />

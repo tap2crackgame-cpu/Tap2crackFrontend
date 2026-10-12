@@ -220,7 +220,7 @@ function ProgressBar({ progress, othersActive = false, message }: ProgressBarPro
   return (
     <View style={styles.container}>
       <View style={styles.labelContainer}>
-        <Text style={[styles.notificationText, compact && styles.notificationTextCompact, clampedProgress >= 70 && styles.notificationHot]} numberOfLines={2}>{getNotificationText()}</Text>
+        <Text style={[styles.notificationText, compact && styles.notificationTextCompact, clampedProgress >= 70 && styles.notificationHot]}>{getNotificationText()}</Text>
         <Text style={[styles.progressText, compact && styles.progressTextCompact]}>{isNaN(clampedProgress) ? 0 : Math.floor(clampedProgress)}%</Text>
       </View>
 

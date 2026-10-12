@@ -43,8 +43,8 @@ function WinnerTicker({ winners, compact = false }: { winners: Winner[]; compact
       <Animated.View
         style={[styles.pill, { opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }]}
       >
-        <Text style={[styles.text, compact && styles.textSm]} numberOfLines={1}>
-          🎉 <Text style={styles.name}>{displayWinnerName(w.user_name)}</Text> won {prizeShort(w)}
+        <Text style={[styles.text, compact && styles.textSm]}>
+          🎉 <Text style={styles.name}>{displayWinnerName(w.user_name).split(" ")[0]}</Text> won {prizeShort(w)}
           <Text style={styles.when}> · {ago(w.won_at)}</Text>
         </Text>
       </Animated.View>
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(46,204,113,0.4)",
   },
-  text: { color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "600" },
+  text: { color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "600", textAlign: "center" },
   textSm: { fontSize: 12 },
   name: { color: "#7CF0A9", fontWeight: "800" },
   when: { color: "rgba(255,255,255,0.5)", fontWeight: "500" },

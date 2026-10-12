@@ -67,6 +67,12 @@ const PRIZE_CATEGORIES = [
   },
 ];
 
+/** Keep boost toasts on one line without "…": first name only, max 12 letters. */
+function shortName(name?: string | null) {
+  const first = String(name ?? "Someone").trim().split(/\s+/)[0] || "Someone";
+  return first.length > 12 ? first.slice(0, 11) + "." : first;
+}
+
 export default function Tap2CrackGame() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
@@ -446,6 +452,11 @@ export default function Tap2CrackGame() {
   const stageHeight = eggH + (isShort ? 48 : 64) + (eggHasBadge ? 26 : 0);
   const chickenSize = isPhone ? 44 : 56;
   const bubbleSize = width < 360 ? 52 : 60;
+  // "ABOUT TO CRACK!" / "ANYONE'S EGG NOW!" — size the font from the real screen width so the whole
+  // line always fits (no "…" cut-off on small phones or on web, where adjustsFontSizeToFit does nothing).
+  const crackBannerText = progressPct >= 95 ? "ANYONE'S EGG NOW! 😱" : "ABOUT TO CRACK!";
+  const crackBannerAvail = Math.min(contentMax, width) - 2 * padH - 24;
+  const crackBannerFont = Math.max(18, Math.min(44, Math.floor(crackBannerAvail / (crackBannerText.length * 0.74))));
 
   // ---- Clucky buddy beside the egg (reacts to the round + tips) ----
   const [savedOutfit, setSavedOutfit] = useState<OutfitId>(getOutfitSync());
@@ -776,13 +787,11 @@ export default function Tap2CrackGame() {
               <Animated.Text
                 style={[
                   styles.crackBanner,
-                  isPhone && styles.crackBannerSm,
+                  { fontSize: crackBannerFont },
                   { transform: [{ scale: crackPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] },
                 ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
               >
-                {progressPct >= 95 ? "ANYONE'S EGG NOW! 😱" : "ABOUT TO CRACK!"}
+                {crackBannerText}
               </Animated.Text>
             </View>
           )}
@@ -939,8 +948,8 @@ export default function Tap2CrackGame() {
                 ]}
               >
                 {p.mult === 3 ? <Crown size={isPhone ? 13 : 15} color="#D4A5FF" /> : <Zap size={isPhone ? 13 : 15} color="#4ECDC4" />}
-                <Text numberOfLines={1} ellipsizeMode="middle" style={[styles.activityText, isPhone && styles.activityTextSm]}>
-                  <Text style={styles.activityName}>{p.name}</Text> activated{" "}
+                <Text style={[styles.activityText, isPhone && styles.activityTextSm]}>
+                  <Text style={styles.activityName}>{shortName(p.name)}</Text> activated{" "}
                   <Text style={{ color: p.mult === 3 ? "#D4A5FF" : "#4ECDC4", fontWeight: "900" }}>{p.mult}x</Text> taps
                 </Text>
               </Animated.View>
