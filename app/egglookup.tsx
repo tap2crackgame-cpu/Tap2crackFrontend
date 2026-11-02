@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, TextInput, Platform, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Shield, Check, Users, Trophy, Zap, DollarSign, Clock, Crown, Ban, Gift, Video, Search } from "lucide-react-native";
+import { Shield, Check, Users, Trophy, Zap, DollarSign, Clock, Crown, Ban, Gift, Video, Search, SlidersHorizontal } from "lucide-react-native";
 import {
   fetchAdminAds,
   createAdminAd,
@@ -25,10 +25,11 @@ import {
 import { getAuthApi } from "@/utils/api";
 import { showAlertAsToast } from "@/context/ToastContext";
 import CouponAdminPanel from "@/components/admin/CouponAdminPanel";
+import PrizePercentagePanel from "@/components/admin/PrizePercentagePanel";
 import PhoneSearchBar from "@/components/admin/PhoneSearchBar";
 import { notifyWinnerEmail, isAutoEmailConfigured } from "@/utils/notifyWinnerEmail";
 
-type Tab = 'overview' | 'users' | 'winners' | 'payments' | 'Coupons' | 'prizes' | 'ads';
+type Tab = 'overview' | 'users' | 'winners' | 'payments' | 'Coupons' | 'prizes' | 'prize-percentages' | 'ads';
 type PrizeSettleFilter = 'all' | 'unsettled' | 'settled';
 
 
@@ -560,6 +561,7 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
     { key: 'payments', label: 'Payouts', icon: <DollarSign size={16} color={activeTab === 'payments' ? '#27AE60' : 'rgba(255,255,255,0.5)'} /> },
     { key: 'Coupons', label: 'Coupons', icon: <Gift size={16} color={activeTab === 'Coupons' ? '#FF6B6B' : 'rgba(255,255,255,0.5)'} /> },
     { key: 'prizes', label: 'Prizes', icon: <Check size={16} color={activeTab === 'prizes' ? '#FFD700' : 'rgba(255,255,255,0.5)'} /> },
+    { key: 'prize-percentages', label: 'Prize Odds', icon: <SlidersHorizontal size={16} color={activeTab === 'prize-percentages' ? '#4ECDC4' : 'rgba(255,255,255,0.5)'} /> },
     { key: 'ads', label: 'Ads', icon: <Video size={16} color={activeTab === 'ads' ? '#4ECDC4' : 'rgba(255,255,255,0.5)'} /> },
   ];
 
@@ -844,6 +846,10 @@ const handleDeleteAd = useCallback((ad: PromoAd) => {
 
           {activeTab === 'Coupons' && (
             <CouponAdminPanel token={token} baseUrl={BASE_URL} />
+          )}
+
+          {activeTab === 'prize-percentages' && (
+            <PrizePercentagePanel token={token} baseUrl={BASE_URL} />
           )}
 
           {activeTab === 'ads' && (
